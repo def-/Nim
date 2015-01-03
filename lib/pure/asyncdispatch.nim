@@ -955,9 +955,10 @@ else:
       result = true
       let res = recv(sock.SocketHandle, addr readBuffer[0], size.cint,
                      flags.toOSFlags())
-      #echo("recv cb res: ", res)
+      echo("recv cb res: ", res)
       if res < 0:
         let lastError = osLastError()
+        echo lastError
         if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}:
           if flags.isDisconnectionError(lastError):
             retFuture.complete("")
@@ -989,7 +990,9 @@ else:
       let res = send(sock.SocketHandle, addr d[written], netSize.cint,
                      MSG_NOSIGNAL)
       if res < 0:
+        echo("send cb res: ", res)
         let lastError = osLastError()
+        echo lastError
         if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}:
           if flags.isDisconnectionError(lastError):
             retFuture.complete()
@@ -1018,8 +1021,10 @@ else:
       var addrLen = sizeof(sockAddress).Socklen
       var client = accept(sock.SocketHandle,
                           cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
+      echo("accept cb res: ", client)
       if client == osInvalidSocket:
         let lastError = osLastError()
+        echo(lastError)
         assert lastError.int32 notin {EWOULDBLOCK, EAGAIN}
         if lastError.int32 == EINTR:
           return false
