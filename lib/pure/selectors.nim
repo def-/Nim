@@ -23,7 +23,7 @@ proc `$`*(x: SocketHandle): string {.borrow.}
 
 type
   Event* = enum
-    EvRead, EvWrite
+    EvRead, EvWrite, EvError
 
   SelectorKey* = ref object
     fd*: SocketHandle
@@ -80,6 +80,7 @@ elif defined(linux):
       data: RootRef): SelectorKey {.discardable.} =
     ## Registers file descriptor ``fd`` to selector ``s`` with a set of TEvent
     ## ``events``.
+    echo "REGISTERING ", fd
     var event = createEventStruct(events, fd)
     if events != {}:
       if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fd, addr(event)) != 0:
@@ -93,35 +94,48 @@ elif defined(linux):
   proc update*(s: Selector, fd: SocketHandle,
       events: set[Event]): SelectorKey {.discardable.} =
     ## Updates the events which ``fd`` wants notifications for.
+    echo("UPDATE: BEFORE ALL ", fd)
     if s.fds[fd].events != events:
+      echo("UPDATE: EVENTS NOT ", fd)
       if events == {}:
         # This fd is idle -- it should not be registered to epoll.
         # But it should remain a part of this selector instance.
         # This is to prevent epoll_wait from returning immediately
         # because its got fds which are waiting for no events and
         # are therefore constantly ready. (leading to 100% CPU usage).
+        echo("UPDATE: BEFORE EPOLL_CTL 1 ", fd)
         if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fd, nil) != 0:
+          echo("UPDATE: ERROR EPOLL_CTL 1 ", fd)
           raiseOSError(osLastError())
+        echo("UPDATE: AFTER EPOLL_CTL 1 ", fd)
         s.fds[fd].events = events
       else:
         var event = createEventStruct(events, fd)
         if s.fds[fd].events == {}:
           # This fd is idle. It's not a member of this epoll instance and must
           # be re-registered.
+          echo("UPDATE: BEFORE EPOLL_CTL 2 ", fd)
           if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fd, addr(event)) != 0:
+            echo("UPDATE: ERROR EPOLL_CTL 2 ", fd)
             raiseOSError(osLastError())
+          echo("UPDATE: AFTER EPOLL_CTL 2 ", fd)
         else:
+          echo("UPDATE: BEFORE EPOLL_CTL 3 ", fd)
           if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fd, addr(event)) != 0:
+            echo("UPDATE: ERROR EPOLL_CTL 3 ", fd)
             raiseOSError(osLastError())
+          echo("UPDATE: AFTER EPOLL_CTL 3 ", fd)
         s.fds[fd].events = events
       
       result = s.fds[fd]
   
   proc unregister*(s: Selector, fd: SocketHandle): SelectorKey {.discardable.} =
+    echo "UNREGISTERING ", fd
     if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fd, nil) != 0:
       let err = osLastError()
       if err.cint notin {ENOENT, EBADF}: # TODO: Why do we sometimes get an EBADF? Is this normal?
         raiseOSError(err)
+      echo err
     result = s.fds[fd]
     s.fds.del(fd)
 
@@ -154,13 +168,17 @@ elif defined(linux):
       let fd = s.events[i].data.fd.SocketHandle
     
       var evSet: set[Event] = {}
+      if (s.events[i].events and EPOLLERR) != 0: evSet = evSet + {EvError}
+      if (s.events[i].events and EPOLLHUP) != 0: evSet = evSet + {EvError} # TODO: Maybe another code?
+      if (s.events[i].events and EPOLLRDHUP) != 0: evSet = evSet + {EvError} # TODO: Maybe another code?
       if (s.events[i].events and EPOLLIN) != 0: evSet = evSet + {EvRead}
       if (s.events[i].events and EPOLLOUT) != 0: evSet = evSet + {EvWrite}
       let selectorKey = s.fds[fd]
+      echo "FD still in: ", fd
       assert selectorKey != nil
       result.add((selectorKey, evSet))
 
-      #echo("Epoll: ", result[i].key.fd, " ", result[i].events, " ", result[i].key.events)
+      echo("Epoll: ", result[i].key.fd, " ", result[i].events, " ", result[i].key.events)
   
   proc newSelector*(): Selector =
     new result

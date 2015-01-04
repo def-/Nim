@@ -24,7 +24,7 @@
 ##    asyncCheck server.serve(Port(8080), cb)
 ##    runForever()
 
-import strtabs, asyncnet, asyncdispatch, parseutils, uri, strutils
+import strtabs, asyncnet, asyncdispatch, parseutils, uri, strutils, selectors
 type
   Request* = object
     client*: AsyncSocket # TODO: Separate this into a Response object?
@@ -160,9 +160,11 @@ proc processClient(client: AsyncSocket, address: string,
     let line = await client.recvLine() # TODO: Timeouts.
     if line == "":
       client.close()
+      echo "CLOSING BC OF TIMEOUT ", client.fd
       return
     let lineParts = line.split(' ')
     if lineParts.len != 3:
+      echo "WAITING FOR MORE ", client.fd
       await request.respond(Http400, "Invalid request. Got: " & line)
       continue
 
@@ -176,6 +178,7 @@ proc processClient(client: AsyncSocket, address: string,
       i = 0
       let headerLine = await client.recvLine()
       if headerLine == "":
+        echo "HEADERLINE SO EMPTY ", client.fd
         client.close(); return
       if headerLine == "\c\L": break
       # TODO: Compiler crash
@@ -188,6 +191,7 @@ proc processClient(client: AsyncSocket, address: string,
     try:
       request.protocol = protocol.parseProtocol()
     except ValueError:
+      echo "A VALUE ERROR OMG ", client.fd
       asyncCheck request.respond(Http400, "Invalid request protocol. Got: " &
           protocol)
       continue
@@ -196,8 +200,10 @@ proc processClient(client: AsyncSocket, address: string,
       # Check for Expect header
       if request.headers.hasKey("Expect"):
         if request.headers["Expect"].toLower == "100-continue":
+          echo "100 CONTINUE ", client.fd
           await client.sendStatus("100 Continue")
         else:
+          echo "417 EXPECTATION FAILED ", client.fd
           await client.sendStatus("417 Expectation Failed")
     
       # Read the body
@@ -205,33 +211,41 @@ proc processClient(client: AsyncSocket, address: string,
       if request.headers.hasKey("Content-Length"):
         var contentLength = 0
         if parseInt(request.headers["Content-Length"], contentLength) == 0:
+          echo "400 BAD CONTENT LENGTH ", client.fd
           await request.respond(Http400, "Bad Request. Invalid Content-Length.")
         else:
+          echo "GOOD LENGTH BUT STH ELSE ", client.fd
           request.body = await client.recv(contentLength)
           assert request.body.len == contentLength
       else:
+        echo "WTF NO CONTENT LENGTH ", client.fd
         await request.respond(Http400, "Bad Request. No Content-Length.")
         continue
 
     case reqMethod.normalize
     of "get", "post", "head", "put", "delete", "trace", "options", "connect", "patch":
+      echo "WAIT FOR MY CALLBACK ", client.fd
       await callback(request)
+      echo "DONE WAIT FOR MY CALLBACK ", client.fd
     else:
+      echo "INVALID THIS REQUEST METHOD ", client.fd
       await request.respond(Http400, "Invalid request method. Got: " & reqMethod)
+      echo "DONE INVALID THIS REQUEST METHOD ", client.fd
 
     # Persistent connections
-    if (request.protocol == HttpVer11 and
-        request.headers["connection"].normalize != "close") or
-       (request.protocol == HttpVer10 and
-        request.headers["connection"].normalize == "keep-alive"):
-      # In HTTP 1.1 we assume that connection is persistent. Unless connection
-      # header states otherwise.
-      # In HTTP 1.0 we assume that the connection should not be persistent.
-      # Unless the connection header states otherwise.
-      discard
-    else:
-      request.client.close()
-      break
+    #if (request.protocol == HttpVer11 and
+    #    request.headers["connection"].normalize != "close") or
+    #   (request.protocol == HttpVer10 and
+    #    request.headers["connection"].normalize == "keep-alive"):
+    #  # In HTTP 1.1 we assume that connection is persistent. Unless connection
+    #  # header states otherwise.
+    #  # In HTTP 1.0 we assume that the connection should not be persistent.
+    #  # Unless the connection header states otherwise.
+    #  discard
+    #else:
+    echo "CLOSING BECAUSE NOT PERSISTANT ", client.fd
+    request.client.close()
+    break
 
 proc serve*(server: AsyncHttpServer, port: Port,
             callback: proc (request: Request): Future[void] {.closure,gcsafe.},

@@ -853,9 +853,11 @@ else:
   proc closeSocket*(sock: TAsyncFD) =
     let disp = getGlobalDispatcher()
     sock.SocketHandle.close()
+    echo "asyncdispatch.closeSocket"
     disp.selector.unregister(sock.SocketHandle)
 
   proc unregister*(fd: TAsyncFD) =
+    echo "asyncdisptch.unregister"
     getGlobalDispatcher().selector.unregister(fd.SocketHandle)
 
   proc addRead*(fd: TAsyncFD, cb: TCallback) =
@@ -867,10 +869,17 @@ else:
   
   proc addWrite*(fd: TAsyncFD, cb: TCallback) =
     let p = getGlobalDispatcher()
+    echo("ADD WRITE: BEFORE ", fd.cint)
     if fd.SocketHandle notin p.selector:
+      echo("ADD WRITE: FAILURE ", fd.cint)
       raise newException(ValueError, "File descriptor not registered.")
+    echo("ADD WRITE: AFTER ", fd.cint)
+    echo p.selector[fd.SocketHandle].data.PData.writeCBs.len
     p.selector[fd.SocketHandle].data.PData.writeCBs.add(cb)
+    echo p.selector[fd.SocketHandle].data.PData.writeCBs.len
+    echo("ADD WRITE: UPDATE ", fd.cint)
     update(fd, p.selector[fd.SocketHandle].events + {EvWrite})
+    echo("ADD WRITE: UPDATE DONE ", fd.cint)
   
   proc poll*(timeout = 500) =
     let p = getGlobalDispatcher()
@@ -878,13 +887,19 @@ else:
       let data = PData(info.key.data)
       assert data.fd == info.key.fd.TAsyncFD
       echo("In poll ", data.fd.cint)
+      if EvError in info.events:
+        closeSocket(data.fd)
+        continue
+
       if EvRead in info.events:
         # Callback may add items to ``data.readCBs`` which causes issues if
         # we are iterating over ``data.readCBs`` at the same time. We therefore
         # make a copy to iterate over.
         let currentCBs = data.readCBs
         data.readCBs = @[]
+        echo "EvRead in!"
         for cb in currentCBs:
+          echo "Adding reader"
           if not cb(data.fd):
             # Callback wants to be called again.
             data.readCBs.add(cb)
@@ -892,16 +907,29 @@ else:
       if EvWrite in info.events:
         let currentCBs = data.writeCBs
         data.writeCBs = @[]
+        echo "EvWrite in!"
         for cb in currentCBs:
+          echo "Adding writer"
           if not cb(data.fd):
             # Callback wants to be called again.
             data.writeCBs.add(cb)
       
-      if info.key in p.selector:
+      #let result = posix.recv(data.fd.SocketHandle, nil, 0, 0)
+      if info.key in p.selector:# and result != 0:
+        echo "Key in selector!"
         var newEvents: set[Event]
-        if data.readCBs.len != 0: newEvents = {EvRead}
-        if data.writeCBs.len != 0: newEvents = newEvents + {EvWrite}
+        #if data.readCBs.len != 0:
+        #  echo "NewEvent: EvRead"
+        newEvents = {EvRead}
+        if data.writeCBs.len != 0:
+          #for i in data.writeCBs:
+            #echo p.selector.contains(data.fd.SocketHandle)
+            #echo "POSIX RECV RESULT: ", posix.recv(data.fd.SocketHandle, nil, 0, 0)
+
+          echo "NewEvent: EvWrite"
+          newEvents = newEvents + {EvWrite}
         if newEvents != info.key.events:
+          echo "NewEvent: Update"
           update(data.fd, newEvents)
       else:
         # FD no longer a part of the selector. Likely been closed
@@ -987,28 +1015,37 @@ else:
       result = true
       let netSize = data.len-written
       var d = data.cstring
+      echo("DISPATCH: BEFORE SEND ", sock.int)
       let res = send(sock.SocketHandle, addr d[written], netSize.cint,
                      MSG_NOSIGNAL)
+      echo("DISPATCH: AFTER SEND ", sock.int)
       if res < 0:
         echo("send cb res: ", res)
         let lastError = osLastError()
         echo lastError
         if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}:
           if flags.isDisconnectionError(lastError):
+            echo("DISPATCH: COMPLETE 1 ", sock.int)
             retFuture.complete()
           else:
+            echo("DISPATCH: FAIL 1 ", sock.int)
             retFuture.fail(newException(OSError, osErrorMsg(lastError)))
         else:
+          echo("DISPATCH: FALSE 1 ", sock.int)
           result = false # We still want this callback to be called.
       else:
         written.inc(res)
         if res != netSize:
+          echo("DISPATCH: FALSE 2 ", sock.int)
           result = false # We still have data to send.
         else:
+          echo("DISPATCH: COMPLETE 2 ", sock.int)
           retFuture.complete()
     # TODO: The following causes crashes.
     #if not cb(socket):
+    echo("DISPATCH: ADD WRITE ", socket.int)
     addWrite(socket, cb)
+    echo("DISPATCH: DONE ADD WRITE ", socket.int)
     return retFuture
 
   proc acceptAddr*(socket: TAsyncFD, flags = {SocketFlag.SafeDisconn}):
