@@ -146,8 +146,10 @@ elif defined(linux):
     ## on the ``fd``.
     result = @[]
     let evNum = epoll_wait(s.epollFD, addr s.events[0], 64.cint, timeout.cint)
-    if evNum < 0: raiseOSError(osLastError())
-    if evNum == 0: return @[]
+    if evNum < 0:
+      let err = osLastError()
+      if err.cint != EINTR:
+        raiseOSError(err)
     for i in 0 .. <evNum:
       let fd = s.events[i].data.fd.SocketHandle
     
