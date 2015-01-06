@@ -71,18 +71,50 @@ proc compileCCode*(ccode: string) =
 proc run*(args: string) =
   var s = @[cstring(gProjectName)] & map(split(args), proc(x: string): cstring = cstring(x))
   var err = tinyc.run(gTinyC, cint(len(s)), cast[cstringArray](addr(s[0]))) != 0'i32
-  closeCCState(gTinyC)
+  #closeCCState(gTinyC)
   if err: rawMessage(errExecutionOfProgramFailed, "")
 
+import tables
+
+var globalMemory = initTable[cstring, pointer]()
+
+proc getGlobalMemory(name: cstring, size: int): pointer {.exportc.} =
+  #result = globalMemory[name]
+  result = cast[pointer](12.cint)
+
+proc setGlobalMemory(name: cstring, value: pointer, size: int) =
+  echo((cast[ptr cint](value))[])
+  globalMemory[name] = value
+
 when isMainModule:
-  # TODO: How to split this up, keep variables?
-  # This sounds very related, but unfortunately never open-sourced / finished
-  # (?): https://lists.gnu.org/archive/html/tinycc-devel/2003-05/msg00027.html
-  compileCCode("""#include <stdio.h>
+  globalMemory["someGlobal"] = cast[pointer](12)
+
+  setupEnvironment()
+  discard compileString(gTinyC, """#include <stdio.h>
+void* getGlobalMemory(char *name, size_t size);
+int someGlobal;
 int main()
 {
-  printf("Brave new world!\n");
-  printf("HERE WE GO!\n");
+  printf("Brave new world! %d\n", getGlobalMemory("someGlobal", sizeof(typeof(someGlobal))));
+  someGlobal = 130;
   return 0;
 }""")
+  echo "addSymbol: ", tinyc.addSymbol(gTinyC, "getGlobalMemory", getGlobalMemory)
+  run("")
+  #echo "relocate: ", tinyc.relocate(gTinyC, nil)
+  setGlobalMemory("someGlobal", tinyc.getSymbol(gTinyC, "someGlobal"), 0)
+
+  closeCCState(gTinyC)
+
+  gTinyC = initTinyCState()
+  setupEnvironment()
+  compileCCode("""#include <stdio.h>
+void* getGlobalMemory(char *name, size_t size);
+int someGlobal;
+int main()
+{
+  printf("HERE WE GO! %d\n", getGlobalMemory("someGlobal", sizeof(typeof(someGlobal))));
+  return 0;
+}""")
+  echo "addSymbol: ", tinyc.addSymbol(gTinyC, "getGlobalMemory", getGlobalMemory)
   run("")
