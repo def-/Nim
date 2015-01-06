@@ -76,6 +76,8 @@ proc run*(args: string) =
 
 when isMainModule:
   # TODO: How to split this up, keep variables?
+  # This sounds very related, but unfortunately never open-sourced / finished
+  # (?): https://lists.gnu.org/archive/html/tinycc-devel/2003-05/msg00027.html
   compileCCode("""#include <stdio.h>
 int main()
 {
