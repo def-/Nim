@@ -74,3 +74,13 @@ proc run*(args: string) =
   closeCCState(gTinyC)
   if err: rawMessage(errExecutionOfProgramFailed, "")
 
+when isMainModule:
+  # TODO: How to split this up, keep variables?
+  compileCCode("""#include <stdio.h>
+int main()
+{
+  printf("Brave new world!\n");
+  printf("HERE WE GO!\n");
+  return 0;
+}""")
+  run("")
