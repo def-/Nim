@@ -1,7 +1,6 @@
 #include <stdio.h>
-#include <math.h>
 
-int fib(int n)
+int fib(n)
 {
 	if (n <= 2)
 		return 1;
