@@ -211,7 +211,7 @@ when useStackMaskHack:
 # create for the main thread. Note: do not insert this data into the list
 # of all threads; it's not to be stopped etc.
 when not defined(useNimRtl):
-  when not useStackMaskHack:
+  when not useStackMaskHack and not defined(nogc) and hostOS != "standalone":
     #when not defined(createNimRtl): initStackBottom()
     initGC()
     
@@ -269,15 +269,16 @@ type
   TThreadId*[TArg] = ptr TThread[TArg] ## the current implementation uses
                                        ## a pointer as a thread ID.
 
-when not defined(boehmgc) and not hasSharedHeap:
-  proc deallocOsPages()
+#when not defined(boehmgc) and not hasSharedHeap:
+#  proc deallocOsPages()
 
 template threadProcWrapperBody(closure: expr) {.immediate.} =
   when declared(globalsSlot): threadVarSetValue(globalsSlot, closure)
   var t = cast[ptr TThread[TArg]](closure)
   when useStackMaskHack:
     var tls: TThreadLocalStorage
-  when not defined(boehmgc) and not defined(nogc) and not hasSharedHeap:
+  when not defined(boehmgc) and not defined(nogc) and not hasSharedHeap and
+      hostOS != "standalone":
     # init the GC for this thread:
     setStackBottom(addr(t))
     initGC()
