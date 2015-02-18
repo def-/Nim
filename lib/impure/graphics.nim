@@ -159,7 +159,8 @@ proc blit*(destSurf: PSurface, destRect: TRect, srcSurf: PSurface,
   srcTRect.w = uint16(srcRect.width)
   srcTRect.h = uint16(srcRect.height)
 
-  if sdl.blitSurface(srcSurf.s, addr(srcTRect), destSurf.s, addr(destTRect)) != 0:
+  if sdl.blitSurface(srcSurf.s, addr(srcTRect), destSurf.s,
+                     addr(destTRect)) != 0:
     raiseEGraphics()
 
 proc textBounds*(text: string, font = defaultFont): tuple[width, height: int] =
@@ -556,14 +557,16 @@ when isMainModule:
         mouseStartX = int(mbd.x)
         mouseStartY = int(mbd.y)
       else:
-        surf.drawLineAA((mouseStartX, mouseStartY), (int(mbd.x), int(mbd.y)), colPurple)
+        surf.drawLineAA((mouseStartX, mouseStartY), (int(mbd.x), int(mbd.y)),
+          colPurple)
         mouseStartX = -1
         mouseStartY = -1
         
     of sdl.MOUSEMOTION:
       var mm = sdl.evMouseMotion(eventp)
       if mouseStartX != -1 and mouseStartY != -1:
-        surf.drawLineAA((mouseStartX, mouseStartY), (int(mm.x), int(mm.y)), colPurple)
+        surf.drawLineAA((mouseStartX, mouseStartY), (int(mm.x), int(mm.y)),
+          colPurple)
       #echo(mm.x, " ", mm.y, " ", mm.yrel)
     
     else:

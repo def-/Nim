@@ -419,7 +419,8 @@ proc generateSymbolIndex(symbols: seq[TIndexEntry]): string =
   while i < symbols.len:
     let keyword= symbols[i].keyword
     let cleaned_keyword = keyword[1..keyword.high - 1]
-    result.addf("<dt><a name=\"$2\" href=\"#$2\"><span>$1:</span></a></dt><ul class=\"simple\"><dd>\n",
+    result.addf("""<dt><a name=\"$2\" href=\"#$2\"><span>$1:</span></a></dt>\
+<ul class=\"simple\"><dd>\n""",
                 [keyword, cleaned_keyword])
     var j = i
     while j < symbols.len and keyword == symbols[j].keyword:
@@ -754,7 +755,8 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
   if s.valid: dispA(d.target, options, " scale=\"$1\"", " scale=$1", [strip(s)])
   
   s = getFieldValue(n, "height")
-  if s.valid: dispA(d.target, options, " height=\"$1\"", " height=$1", [strip(s)])
+  if s.valid:
+    dispA(d.target, options, " height=\"$1\"", " height=$1", [strip(s)])
   
   s = getFieldValue(n, "width")
   if s.valid: dispA(d.target, options, " width=\"$1\"", " width=$1", [strip(s)])
@@ -838,7 +840,8 @@ proc buildLinesHTMLTable(params: CodeBlockParams, code: string):
 
   var codeLines = 1 + code.strip.countLines
   assert codeLines > 0
-  result.beginTable = """<table class="line-nums-table"><tbody><tr><td class="blob-line-nums"><pre>"""
+  result.beginTable = """<table class="line-nums-table"><tbody><tr>\
+<td class="blob-line-nums"><pre>"""
   var line = params.startLine
   while codeLines > 0:
     result.beginTable.add($line & "\n")
@@ -880,9 +883,9 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
       of gtNone, gtWhitespace: 
         add(result, substr(m.text, g.start, g.length + g.start - 1))
       else:
-        dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}", [
-          esc(d.target, substr(m.text, g.start, g.length+g.start-1)),
-          tokenClassToStr[g.kind]])
+        dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}",
+          [esc(d.target, substr(m.text, g.start, g.length+g.start-1)),
+           tokenClassToStr[g.kind]])
     deinitGeneralTokenizer(g)
   dispA(d.target, result, blockEnd, "\n\\end{rstpre}\n")
 

@@ -24,7 +24,8 @@ proc zipError(z: var TZipArchive) =
   e.msg = $zip_strerror(z.w)
   raise e
   
-proc open*(z: var TZipArchive, filename: string, mode: FileMode = fmRead): bool =
+proc open*(z: var TZipArchive, filename: string,
+  mode: FileMode = fmRead): bool =
   ## Opens a zip file for reading, writing or appending. All file modes are 
   ## supported. Returns true iff successful, false otherwise.
   var err, flags: int32

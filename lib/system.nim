@@ -335,8 +335,10 @@ type
   TimeEffect* = object of RootEffect   ## Time effect.
   IOEffect* = object of RootEffect     ## IO effect.
   ReadIOEffect* = object of IOEffect   ## Effect describing a read IO operation.
-  WriteIOEffect* = object of IOEffect  ## Effect describing a write IO operation.
-  ExecIOEffect* = object of IOEffect   ## Effect describing an executing IO operation.
+  WriteIOEffect* = object of IOEffect  ## Effect describing a write IO
+                                       ## operation.
+  ExecIOEffect* = object of IOEffect   ## Effect describing an executing IO
+                                       ## operation.
 
   Exception* {.compilerproc.} = object of RootObj ## \
     ## Base exception class.
@@ -527,12 +529,14 @@ proc pred*[T](x: Ordinal[T], y = 1): T {.magic: "Pred", noSideEffect.}
   ## an ordinal type. If such a value does not exist, ``EOutOfRange`` is raised
   ## or a compile time error occurs.
 
-proc inc*[T: Ordinal|uint|uint64](x: var T, y = 1) {.magic: "Inc", noSideEffect.}
+proc inc*[T: Ordinal|uint|uint64](x: var T, y = 1) {.
+  magic: "Inc", noSideEffect.}
   ## increments the ordinal ``x`` by ``y``. If such a value does not
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = succ(x, y)``.
 
-proc dec*[T: Ordinal|uint|uint64](x: var T, y = 1) {.magic: "Dec", noSideEffect.}
+proc dec*[T: Ordinal|uint|uint64](x: var T, y = 1) {.
+  magic: "Dec", noSideEffect.}
   ## decrements the ordinal ``x`` by ``y``. If such a value does not
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = pred(x, y)``.
@@ -631,12 +635,12 @@ when not defined(JS):
     ## unsigned.
   proc ze64*(x: int): int64 {.magic: "ZeIToI64", noSideEffect.}
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
-    ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
-    ## (This is the case on 64 bit processors.)
+    ## unsigned. Does nothing if the size of an ``int`` is the same as
+    ## ``int64``. (This is the case on 64 bit processors.)
 
   proc toU8*(x: int): int8 {.magic: "ToU8", noSideEffect.}
-    ## treats `x` as unsigned and converts it to a byte by taking the last 8 bits
-    ## from `x`.    
+    ## treats `x` as unsigned and converts it to a byte by taking the last 8
+    ## bits from `x`.
   proc toU16*(x: int): int16 {.magic: "ToU16", noSideEffect.}
     ## treats `x` as unsigned and converts it to an ``int16`` by taking the last
     ## 16 bits from `x`.
@@ -1229,11 +1233,12 @@ type # these work for most platforms:
   culonglong* {.importc: "unsigned long long", nodecl.} = uint64
     ## This is the same as the type ``unsigned long long`` in *C*.
 
-  cstringArray* {.importc: "char**", nodecl.} = ptr array [0..ArrayDummySize, cstring]
+  cstringArray* {.importc: "char**", nodecl.} =
+    ptr array [0..ArrayDummySize, cstring]
     ## This is binary compatible to the type ``char**`` in *C*. The array's
     ## high value is large enough to disable bounds checking in practice.
     ## Use `cstringArrayToSeq` to convert it into a ``seq[string]``.
-  
+
   PFloat32* = ptr float32 ## an alias for ``ptr float32``
   PFloat64* = ptr float64 ## an alias for ``ptr float64``
   PInt64* = ptr int64 ## an alias for ``ptr int64``
@@ -1715,7 +1720,8 @@ iterator pairs*[T](a: openArray[T]): tuple[key: int, val: T] {.inline.} =
     yield (i, a[i])
     inc(i)
 
-iterator mpairs*[T](a: var openArray[T]): tuple[key: int, val: var T] {.inline.} =
+iterator mpairs*[T](a: var openArray[T]): tuple[key: int, val: var T] {.
+  inline.} =
   ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   ## ``a[index]`` can be modified.
   var i = 0
@@ -1732,7 +1738,8 @@ iterator pairs*[IX, T](a: array[IX, T]): tuple[key: IX, val: T] {.inline.} =
       if i >= high(IX): break
       inc(i)
 
-iterator mpairs*[IX, T](a: var array[IX, T]): tuple[key: IX, val: var T] {.inline.} =
+iterator mpairs*[IX, T](a: var array[IX, T]): tuple[key: IX, val: var T] {.
+  inline.} =
   ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   ## ``a[index]`` can be modified.
   var i = low(IX)
@@ -1937,8 +1944,8 @@ iterator fields*[T: tuple|object](x: T): RootObj {.
   ## iterates over every field of `x`. Warning: This really transforms
   ## the 'for' and unrolls the loop. The current implementation also has a bug
   ## that affects symbol binding in the loop body.
-iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[a,b: expr] {.
-  magic: "Fields", noSideEffect.}
+iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[a,b: expr]
+  {.magic: "Fields", noSideEffect.}
   ## iterates over every field of `x` and `y`.
   ## Warning: This is really transforms the 'for' and unrolls the loop. 
   ## The current implementation also has a bug that affects symbol binding
@@ -2063,8 +2070,8 @@ when false:
 when not defined(nimrodVM) and hostOS != "standalone":
   proc GC_disable*() {.rtl, inl, benign.}
     ## disables the GC. If called n-times, n calls to `GC_enable` are needed to
-    ## reactivate the GC. Note that in most circumstances one should only disable
-    ## the mark and sweep phase with `GC_disableMarkAndSweep`.
+    ## reactivate the GC. Note that in most circumstances one should only
+    ## disable the mark and sweep phase with `GC_disableMarkAndSweep`.
 
   proc GC_enable*() {.rtl, inl, benign.}
     ## enables the GC again.
@@ -2133,7 +2140,8 @@ var
     ## exception is caught and does not propagate further through the call
     ## stack.
 
-  localRaiseHook* {.threadvar.}: proc (e: ref Exception): bool {.nimcall, benign.}
+  localRaiseHook* {.threadvar.}: proc (e: ref Exception): bool {.
+    nimcall, benign.}
     ## with this hook you can influence exception handling on a
     ## thread local level.
     ## If not nil, every 'raise' statement ends up calling this hook. Ordinary
@@ -2411,7 +2419,8 @@ when not defined(JS): #and not defined(NimrodVM):
       ## Raises an IO exception in case of an error. It is an error if the
       ## current file position is not at the beginning of the file.
     
-    proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.}
+    proc readFile*(filename: string): TaintedString {.
+      tags: [ReadIOEffect], benign.}
       ## Opens a file named `filename` for reading.
       ##
       ## Then calls `readAll <#readAll>`_ and closes the file afterwards.
@@ -2432,15 +2441,17 @@ when not defined(JS): #and not defined(NimrodVM):
     proc write*(f: File, b: bool) {.tags: [WriteIOEffect], benign.}
     proc write*(f: File, c: char) {.tags: [WriteIOEffect], benign.}
     proc write*(f: File, c: cstring) {.tags: [WriteIOEffect], benign.}
-    proc write*(f: File, a: varargs[string, `$`]) {.tags: [WriteIOEffect], benign.}
+    proc write*(f: File, a: varargs[string, `$`]) {.
+      tags: [WriteIOEffect], benign.}
       ## Writes a value to the file `f`. May throw an IO exception.
 
     proc readLine*(f: File): TaintedString  {.tags: [ReadIOEffect], benign.}
       ## reads a line of text from the file `f`. May throw an IO exception.
       ## A line of text may be delimited by ``CR``, ``LF`` or
       ## ``CRLF``. The newline character(s) are not part of the returned string.
-    
-    proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect], 
+
+    proc readLine*(f: File, line: var TaintedString): bool {.
+      tags: [ReadIOEffect], 
                   benign.}
       ## reads a line of text from the file `f` into `line`. `line` must not be
       ## ``nil``! May throw an IO exception.
@@ -2478,14 +2489,14 @@ when not defined(JS): #and not defined(NimrodVM):
     proc writeBytes*(f: File, a: openArray[int8], start, len: int): int {.
       tags: [WriteIOEffect], benign.}
       ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
-      ## the number of actual written bytes, which may be less than `len` in case
-      ## of an error.
+      ## the number of actual written bytes, which may be less than `len` in
+      ## case of an error.
 
     proc writeChars*(f: File, a: openArray[char], start, len: int): int {.
       tags: [WriteIOEffect], benign.}
       ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
-      ## the number of actual written bytes, which may be less than `len` in case
-      ## of an error.
+      ## the number of actual written bytes, which may be less than `len` in
+      ## case of an error.
 
     proc writeBuffer*(f: File, buffer: pointer, len: int): int {.
       tags: [WriteIOEffect], benign.}
@@ -2728,7 +2739,8 @@ when not defined(JS): #and not defined(NimrodVM):
       ##     else:
       ##       echo "Value too big!"
     
-    proc unlikely*(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
+    proc unlikely*(val: bool): bool {.importc: "unlikely", nodecl,
+      nosideeffect.}
       ## Hints the optimizer that `val` is likely going to be false.
       ##
       ## You can use this proc to decorate a branch condition. On certain
@@ -2943,13 +2955,16 @@ proc staticExec*(command: string, input = ""): string {.
   ## this proc inside a pragma like `passC <nimc.html#passc-pragma>`_ or `passL
   ## <nimc.html#passl-pragma>`_.
 
-proc `+=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.magic: "Inc", noSideEffect.}
+proc `+=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.
+  magic: "Inc", noSideEffect.}
   ## Increments an ordinal
 
-proc `-=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.magic: "Dec", noSideEffect.}
+proc `-=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.
+  magic: "Dec", noSideEffect.}
   ## Decrements an ordinal
 
-proc `*=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.inline, noSideEffect.} =
+proc `*=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.
+  inline, noSideEffect.} =
   ## Binary `*=` operator for ordinals
   x = x * y
 

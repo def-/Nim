@@ -331,7 +331,8 @@ type
     width*: cstring
     wordSpacing*: cstring
     zIndex*: int
-    getAttribute*: proc (attr: cstring, caseSensitive=false): cstring {.nimcall.}
+    getAttribute*: proc (attr: cstring, caseSensitive=false): cstring {.
+      nimcall.}
     removeAttribute*: proc (attr: cstring, caseSensitive=false) {.nimcall.}
     setAttribute*: proc (attr, value: cstring, caseSensitive=false) {.nimcall.}
 

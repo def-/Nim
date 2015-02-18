@@ -16,7 +16,8 @@ type
   TDbConn* = PPGconn   ## encapsulates a database connection
   TRow* = seq[string]  ## a row of a dataset. NULL database values will be
                        ## transformed always to the empty string.
-  EDb* = object of IOError ## exception that is raised if a database error occurs
+  EDb* = object of IOError ## exception that is raised if a database error
+                           ## occurs
   
   TSqlQuery* = distinct string ## an SQL query string
   TSqlPrepared* = distinct string ## a identifier for the prepared queries

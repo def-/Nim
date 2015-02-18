@@ -38,8 +38,10 @@ type
     TotalPhysMem*: int64 ## Total Physical memory, in bytes
     AvailablePhysMem*: int64 ## Available physical memory, in bytes
     TotalPageFile*: int64 ## The current committed memory limit 
-                          ## for the system or the current process, whichever is smaller, in bytes.
-    AvailablePageFile*: int64 ## The maximum amount of memory the current process can commit, in bytes.
+                          ## for the system or the current process, whichever
+                          ## is smaller, in bytes.
+    AvailablePageFile*: int64 ## The maximum amount of memory the current
+                              ## process can commit, in bytes.
     TotalVirtualMem*: int64 ## Total virtual memory, in bytes
     AvailableVirtualMem*: int64 ## Available virtual memory, in bytes
     
@@ -151,8 +153,8 @@ const
   # GetSystemMetrics
   SM_SERVERR2 = 89 
   
-proc globalMemoryStatusEx*(lpBuffer: var TMEMORYSTATUSEX){.stdcall, dynlib: "kernel32",
-    importc: "GlobalMemoryStatusEx".}
+proc globalMemoryStatusEx*(lpBuffer: var TMEMORYSTATUSEX){.stdcall,
+    dynlib: "kernel32", importc: "GlobalMemoryStatusEx".}
     
 proc getMemoryInfo*(): TMemoryInfo =
   ## Retrieves memory info
@@ -168,8 +170,8 @@ proc getMemoryInfo*(): TMemoryInfo =
   result.TotalVirtualMem = statex.ullTotalVirtual
   result.AvailableVirtualMem = statex.ullAvailExtendedVirtual
 
-proc getVersionEx*(lpVersionInformation: var TOSVERSIONINFOEX): WINBOOL{.stdcall,
-    dynlib: "kernel32", importc: "GetVersionExA".}
+proc getVersionEx*(lpVersionInformation: var TOSVERSIONINFOEX): WINBOOL{.
+    stdcall, dynlib: "kernel32", importc: "GetVersionExA".}
 
 proc getProcAddress*(hModule: int, lpProcName: cstring): pointer{.stdcall,
     dynlib: "kernel32", importc: "GetProcAddress".}
@@ -196,12 +198,14 @@ proc getProductInfo*(majorVersion, minorVersion, SPMajorVersion,
                      SPMinorVersion: int): int =
   ## Retrieves Windows' ProductInfo, this function only works in Vista and 7
   var pGPI = cast[proc (dwOSMajorVersion, dwOSMinorVersion, 
-              dwSpMajorVersion, dwSpMinorVersion: int32, outValue: Pint32){.stdcall.}](getProcAddress(
+              dwSpMajorVersion, dwSpMinorVersion: int32,
+              outValue: Pint32){.stdcall.}](getProcAddress(
                 getModuleHandleA("kernel32.dll"), "GetProductInfo"))
                 
   if pGPI != nil:
     var dwType: int32
-    pGPI(int32(majorVersion), int32(minorVersion), int32(SPMajorVersion), int32(SPMinorVersion), addr(dwType))
+    pGPI(int32(majorVersion), int32(minorVersion), int32(SPMajorVersion),
+      int32(SPMinorVersion), addr(dwType))
     result = int(dwType)
   else:
     return PRODUCT_UNDEFINED
@@ -213,8 +217,9 @@ proc getSystemInfo*(): TSYSTEM_INFO =
   ## Returns the SystemInfo
 
   # Use GetNativeSystemInfo if it's available
-  var pGNSI = cast[proc (lpSystemInfo: LPSYSTEM_INFO){.stdcall.}](getProcAddress(
-                getModuleHandleA("kernel32.dll"), "GetNativeSystemInfo"))
+  var pGNSI = cast[proc (lpSystemInfo: LPSYSTEM_INFO){.stdcall.}](
+                getProcAddress(getModuleHandleA("kernel32.dll"),
+                               "GetNativeSystemInfo"))
                 
   var systemi: TSYSTEM_INFO              
   if pGNSI != nil:
@@ -296,7 +301,8 @@ proc `$`*(osvi: TVersionInfo): string =
     if osvi.majorVersion == 5 and osvi.minorVersion == 2:
       if getSystemMetrics(SM_SERVERR2) != 0:
         result.add("Windows Server 2003 R2, ")
-      elif (osvi.SuiteMask and VER_SUITE_PERSONAL) != 0: # Not sure if this will work
+      elif (osvi.SuiteMask and VER_SUITE_PERSONAL) != 0:
+        # Not sure if this will work
         result.add("Windows Storage Server 2003")
       elif (osvi.SuiteMask and VER_SUITE_WH_SERVER) != 0:
         result.add("Windows Home Server")

@@ -16,7 +16,8 @@ type
   TDbConn* = PMySQL    ## encapsulates a database connection
   TRow* = seq[string]  ## a row of a dataset. NULL database values will be
                        ## transformed always to the empty string.
-  EDb* = object of IOError ## exception that is raised if a database error occurs
+  EDb* = object of IOError ## exception that is raised if a database error
+                           ## occurs
 
   TSqlQuery* = distinct string ## an SQL query string
 
@@ -78,8 +79,8 @@ proc dbFormat(formatstr: TSqlQuery, args: varargs[string]): string =
     else: 
       add(result, c)
   
-proc tryExec*(db: TDbConn, query: TSqlQuery, args: varargs[string, `$`]): bool {.
-  tags: [FReadDB, FWriteDb].} =
+proc tryExec*(db: TDbConn, query: TSqlQuery, args: varargs[string, `$`]): bool
+  {.tags: [FReadDB, FWriteDb].} =
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
   return mysql.realQuery(db, q, q.len) == 0'i32

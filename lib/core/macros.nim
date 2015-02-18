@@ -110,7 +110,8 @@ const
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
                    nnkCallStrLit}
 
-proc `[]`*(n: PNimrodNode, i: int): PNimrodNode {.magic: "NChild", noSideEffect.}
+proc `[]`*(n: PNimrodNode, i: int): PNimrodNode {.
+  magic: "NChild", noSideEffect.}
   ## get `n`'s `i`'th child.
 
 proc `[]=`*(n: PNimrodNode, i: int, child: PNimrodNode) {.magic: "NSetChild",
@@ -152,16 +153,21 @@ proc kind*(n: PNimrodNode): TNimrodNodeKind {.magic: "NKind", noSideEffect.}
   ## returns the `kind` of the node `n`.
 
 proc intVal*(n: PNimrodNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
-proc floatVal*(n: PNimrodNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
+proc floatVal*(n: PNimrodNode): BiggestFloat {.
+  magic: "NFloatVal", noSideEffect.}
 proc symbol*(n: PNimrodNode): PNimrodSymbol {.magic: "NSymbol", noSideEffect.}
 proc ident*(n: PNimrodNode): TNimrodIdent {.magic: "NIdent", noSideEffect.}
 proc typ*(n: PNimrodNode): typedesc {.magic: "NGetType", noSideEffect.}
 proc strVal*(n: PNimrodNode): string  {.magic: "NStrVal", noSideEffect.}
 
-proc `intVal=`*(n: PNimrodNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
-proc `floatVal=`*(n: PNimrodNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSideEffect.}
-proc `symbol=`*(n: PNimrodNode, val: PNimrodSymbol) {.magic: "NSetSymbol", noSideEffect.}
-proc `ident=`*(n: PNimrodNode, val: TNimrodIdent) {.magic: "NSetIdent", noSideEffect.}
+proc `intVal=`*(n: PNimrodNode, val: BiggestInt) {.
+  magic: "NSetIntVal", noSideEffect.}
+proc `floatVal=`*(n: PNimrodNode, val: BiggestFloat) {.
+  magic: "NSetFloatVal", noSideEffect.}
+proc `symbol=`*(n: PNimrodNode, val: PNimrodSymbol) {.
+  magic: "NSetSymbol", noSideEffect.}
+proc `ident=`*(n: PNimrodNode, val: TNimrodIdent) {.
+  magic: "NSetIdent", noSideEffect.}
 #proc `typ=`*(n: PNimrodNode, typ: typedesc) {.magic: "NSetType".}
 # this is not sound! Unfortunately forbidding 'typ=' is not enough, as you
 # can easily do:
@@ -169,13 +175,17 @@ proc `ident=`*(n: PNimrodNode, val: TNimrodIdent) {.magic: "NSetIdent", noSideEf
 #   let fake = semCheck(2.0)
 #   bracket[0] = fake  # constructs a mixed array with ints and floats!
 
-proc `strVal=`*(n: PNimrodNode, val: string) {.magic: "NSetStrVal", noSideEffect.}
+proc `strVal=`*(n: PNimrodNode, val: string) {.
+  magic: "NSetStrVal", noSideEffect.}
 
 proc newNimNode*(kind: TNimrodNodeKind,
-                 n: PNimrodNode=nil): PNimrodNode {.magic: "NNewNimNode", noSideEffect.}
+                 n: PNimrodNode=nil): PNimrodNode
+               {.magic: "NNewNimNode", noSideEffect.}
 
-proc copyNimNode*(n: PNimrodNode): PNimrodNode {.magic: "NCopyNimNode", noSideEffect.}
-proc copyNimTree*(n: PNimrodNode): PNimrodNode {.magic: "NCopyNimTree", noSideEffect.}
+proc copyNimNode*(n: PNimrodNode): PNimrodNode {.
+  magic: "NCopyNimNode", noSideEffect.}
+proc copyNimTree*(n: PNimrodNode): PNimrodNode {.
+  magic: "NCopyNimTree", noSideEffect.}
 
 proc error*(msg: string) {.magic: "NError", benign.}
   ## writes an error message at compile time
@@ -273,7 +283,8 @@ proc parseStmt*(s: string): PNimrodNode {.noSideEffect, compileTime.} =
   let x = internalErrorFlag()
   if x.len > 0: raise newException(ValueError, x)
 
-proc getAst*(macroOrTemplate: expr): PNimrodNode {.magic: "ExpandToAst", noSideEffect.}
+proc getAst*(macroOrTemplate: expr): PNimrodNode {.
+  magic: "ExpandToAst", noSideEffect.}
   ## Obtains the AST nodes returned from a macro or template invocation.
   ## Example:
   ##
@@ -282,7 +293,8 @@ proc getAst*(macroOrTemplate: expr): PNimrodNode {.magic: "ExpandToAst", noSideE
   ##   macro FooMacro() =
   ##     var ast = getAst(BarTemplate())
 
-proc quote*(bl: stmt, op = "``"): PNimrodNode {.magic: "QuoteAst", noSideEffect.}
+proc quote*(bl: stmt, op = "``"): PNimrodNode {.
+  magic: "QuoteAst", noSideEffect.}
   ## Quasi-quoting operator.
   ## Accepts an expression or a block and returns the AST that represents it.
   ## Within the quoted AST, you are able to interpolate PNimrodNode expressions
@@ -559,8 +571,10 @@ from strutils import cmpIgnoreStyle, format
 proc expectKind*(n: PNimrodNode; k: set[TNimrodNodeKind]) {.compileTime.} =
   assert n.kind in k, "Expected one of $1, got $2".format(k, n.kind)
 
-proc newProc*(name = newEmptyNode(); params: openArray[PNimrodNode] = [newEmptyNode()];
-    body: PNimrodNode = newStmtList(), procType = nnkProcDef): PNimrodNode {.compileTime.} =
+proc newProc*(name = newEmptyNode();
+              params: openArray[PNimrodNode] = [newEmptyNode()];
+              body: PNimrodNode = newStmtList(),
+              procType = nnkProcDef): PNimrodNode {.compileTime.} =
   ## shortcut for creating a new proc
   ##
   ## The ``params`` array must start with the return type of the proc,
@@ -668,7 +682,8 @@ proc `$`*(node: PNimrodNode): string {.compileTime.} =
   else:
     badNodeKind node.kind, "$"
 
-proc ident*(name: string): PNimrodNode {.compileTime,inline.} = newIdentNode(name)
+proc ident*(name: string): PNimrodNode {.compileTime, inline.} =
+  result = newIdentNode(name)
   ## Create a new ident node from a string
 
 iterator children*(n: PNimrodNode): PNimrodNode {.inline.}=

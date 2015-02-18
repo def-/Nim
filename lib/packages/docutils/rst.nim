@@ -43,7 +43,8 @@ type
     mwUnsupportedField
   
   TMsgHandler* = proc (filename: string, line, col: int, msgKind: TMsgKind,
-                       arg: string) {.nimcall.} ## what to do in case of an error
+                       arg: string) {.nimcall.} ## what to do in case of an
+                                                ## error
   TFindFileHandler* = proc (filename: string): string {.nimcall.}
 
 const
@@ -313,14 +314,15 @@ proc newSharedState(options: TRstParseOptions,
   result.subs = @[]
   result.refs = @[]
   result.options = options
-  result.msgHandler = if not isNil(msgHandler): msgHandler else: defaultMsgHandler
+  result.msgHandler = if not isNil(msgHandler): msgHandler
+                      else: defaultMsgHandler
   result.findFile = if not isNil(findFile): findFile else: defaultFindFile
   
 proc rstMessage(p: TRstParser, msgKind: TMsgKind, arg: string) = 
   p.s.msgHandler(p.filename, p.line + p.tok[p.idx].line, 
                              p.col + p.tok[p.idx].col, msgKind, arg)
 
-proc rstMessage(p: TRstParser, msgKind: TMsgKind, arg: string, line, col: int) = 
+proc rstMessage(p: TRstParser, msgKind: TMsgKind, arg: string, line, col: int) =
   p.s.msgHandler(p.filename, p.line + line,
                              p.col + col, msgKind, arg)
 

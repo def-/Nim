@@ -495,49 +495,49 @@ proc clikeNextToken(g: var TGeneralTokenizer, keywords: openArray[string],
 
 proc cNextToken(g: var TGeneralTokenizer) = 
   const 
-    keywords: array[0..36, string] = ["_Bool", "_Complex", "_Imaginary", "auto", 
-      "break", "case", "char", "const", "continue", "default", "do", "double", 
-      "else", "enum", "extern", "float", "for", "goto", "if", "inline", "int", 
-      "long", "register", "restrict", "return", "short", "signed", "sizeof", 
-      "static", "struct", "switch", "typedef", "union", "unsigned", "void", 
+    keywords: array[0..36, string] = ["_Bool", "_Complex", "_Imaginary", "auto",
+      "break", "case", "char", "const", "continue", "default", "do", "double",
+      "else", "enum", "extern", "float", "for", "goto", "if", "inline", "int",
+      "long", "register", "restrict", "return", "short", "signed", "sizeof",
+      "static", "struct", "switch", "typedef", "union", "unsigned", "void",
       "volatile", "while"]
   clikeNextToken(g, keywords, {hasPreprocessor})
 
 proc cppNextToken(g: var TGeneralTokenizer) = 
   const 
-    keywords: array[0..47, string] = ["asm", "auto", "break", "case", "catch", 
-      "char", "class", "const", "continue", "default", "delete", "do", "double", 
-      "else", "enum", "extern", "float", "for", "friend", "goto", "if", 
-      "inline", "int", "long", "new", "operator", "private", "protected", 
-      "public", "register", "return", "short", "signed", "sizeof", "static", 
-      "struct", "switch", "template", "this", "throw", "try", "typedef", 
+    keywords: array[0..47, string] = ["asm", "auto", "break", "case", "catch",
+      "char", "class", "const", "continue", "default", "delete", "do", "double",
+      "else", "enum", "extern", "float", "for", "friend", "goto", "if",
+      "inline", "int", "long", "new", "operator", "private", "protected",
+      "public", "register", "return", "short", "signed", "sizeof", "static",
+      "struct", "switch", "template", "this", "throw", "try", "typedef",
       "union", "unsigned", "virtual", "void", "volatile", "while"]
   clikeNextToken(g, keywords, {hasPreprocessor})
 
 proc csharpNextToken(g: var TGeneralTokenizer) = 
   const 
-    keywords: array[0..76, string] = ["abstract", "as", "base", "bool", "break", 
-      "byte", "case", "catch", "char", "checked", "class", "const", "continue", 
-      "decimal", "default", "delegate", "do", "double", "else", "enum", "event", 
-      "explicit", "extern", "false", "finally", "fixed", "float", "for", 
-      "foreach", "goto", "if", "implicit", "in", "int", "interface", "internal", 
-      "is", "lock", "long", "namespace", "new", "null", "object", "operator", 
-      "out", "override", "params", "private", "protected", "public", "readonly", 
-      "ref", "return", "sbyte", "sealed", "short", "sizeof", "stackalloc", 
-      "static", "string", "struct", "switch", "this", "throw", "true", "try", 
-      "typeof", "uint", "ulong", "unchecked", "unsafe", "ushort", "using", 
+    keywords: array[0..76, string] = ["abstract", "as", "base", "bool", "break",
+      "byte", "case", "catch", "char", "checked", "class", "const", "continue",
+      "decimal", "default", "delegate", "do", "double", "else", "enum", "event",
+      "explicit", "extern", "false", "finally", "fixed", "float", "for",
+      "foreach", "goto", "if", "implicit", "in", "int", "interface", "internal",
+      "is", "lock", "long", "namespace", "new", "null", "object", "operator",
+      "out", "override", "params", "private", "protected", "public", "readonly",
+      "ref", "return", "sbyte", "sealed", "short", "sizeof", "stackalloc",
+      "static", "string", "struct", "switch", "this", "throw", "true", "try",
+      "typeof", "uint", "ulong", "unchecked", "unsafe", "ushort", "using",
       "virtual", "void", "volatile", "while"]
   clikeNextToken(g, keywords, {hasPreprocessor})
 
 proc javaNextToken(g: var TGeneralTokenizer) = 
   const 
-    keywords: array[0..52, string] = ["abstract", "assert", "boolean", "break", 
-      "byte", "case", "catch", "char", "class", "const", "continue", "default", 
-      "do", "double", "else", "enum", "extends", "false", "final", "finally", 
-      "float", "for", "goto", "if", "implements", "import", "instanceof", "int", 
-      "interface", "long", "native", "new", "null", "package", "private", 
-      "protected", "public", "return", "short", "static", "strictfp", "super", 
-      "switch", "synchronized", "this", "throw", "throws", "transient", "true", 
+    keywords: array[0..52, string] = ["abstract", "assert", "boolean", "break",
+      "byte", "case", "catch", "char", "class", "const", "continue", "default",
+      "do", "double", "else", "enum", "extends", "false", "final", "finally",
+      "float", "for", "goto", "if", "implements", "import", "instanceof", "int",
+      "interface", "long", "native", "new", "null", "package", "private",
+      "protected", "public", "return", "short", "static", "strictfp", "super",
+      "switch", "synchronized", "this", "throw", "throws", "transient", "true",
       "try", "void", "volatile", "while"]
   clikeNextToken(g, keywords, {})
 

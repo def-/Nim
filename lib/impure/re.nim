@@ -479,7 +479,8 @@ when isMainModule:
 
   block:
     var matches: array[0..15, string]
-    if match("abcdefghijklmnop", re"(a)(b)(c)(d)(e)(f)(g)(h)(i)(j)(k)(l)(m)(n)(o)(p)", matches):
+    if match("abcdefghijklmnop",
+        re"(a)(b)(c)(d)(e)(f)(g)(h)(i)(j)(k)(l)(m)(n)(o)(p)", matches):
       for i in 0..matches.high:
         assert matches[i] == $chr(i + 'a'.ord)
     else:

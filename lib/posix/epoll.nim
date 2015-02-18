@@ -36,13 +36,15 @@ const
 
 type 
   epoll_data* {.importc: "union epoll_data", 
-      header: "<sys/epoll.h>", pure, final.} = object # TODO: This is actually a union.
+      header: "<sys/epoll.h>", pure, final.} = object
+      # TODO: This is actually a union.
     #thePtr* {.importc: "ptr".}: pointer
     fd* {.importc: "fd".}: cint # \
     #u32*: uint32
     #u64*: uint64
 
-  epoll_event* {.importc: "struct epoll_event", header: "<sys/epoll.h>", pure, final.} = object 
+  epoll_event* {.importc: "struct epoll_event", header: "<sys/epoll.h>", pure,
+      final.} = object 
     events*: uint32 # Epoll events 
     data*: epoll_data # User data variable 
 
@@ -58,7 +60,8 @@ proc epoll_create1*(flags: cint): cint {.importc: "epoll_create1",
   ## Same as epoll_create but with an FLAGS parameter.  The unused SIZE
   ##   parameter has been dropped.  
 
-proc epoll_ctl*(epfd: cint; op: cint; fd: cint | SocketHandle; event: ptr epoll_event): cint {.
+proc epoll_ctl*(epfd: cint; op: cint; fd: cint | SocketHandle;
+                event: ptr epoll_event): cint {.
     importc: "epoll_ctl", header: "<sys/epoll.h>".}
   ## Manipulate an epoll instance "epfd". Returns 0 in case of success,
   ##   -1 in case of error ( the "errno" variable will contain the
