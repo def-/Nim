@@ -443,10 +443,18 @@ proc genWhileStmt(p: BProc, t: PNode) =
     #echo "forLoop.counter: ", repr(forLoop.counter)
     if forLoop.counter != nil:
       inc(p.withinLoop)
-      #preserveBreakIdx:
-      #  lineF(p, cpsStmts, "for ($1 = $2; $1 <= $3; ++$1)",
-      #                      rangeA.rdLoc, rangeB.rdLoc,
-      #                      call.sons[3].getStr.toRope)
+      preserveBreakIdx:
+        echo forLoop.counter.kind
+        #echo forLoop.counter.ast.getStr
+        echo forLoop.init.getStr
+        echo forLoop.cond.getStr
+        echo forLoop.increment.getStr
+        lineF(p, cpsStmts, "for ($1 = $2; $1 <= $3; $4)",
+                            forLoop.counter.ast.getStr.toRope, forLoop.init.getStr.toRope,
+                            forLoop.cond.getStr.toRope, forLoop.increment.getStr.toRope)
+        p.breakIdx = startBlock(p)
+        p.blocks[p.breakIdx].isLoop = true
+        genStmts(p, forLoop.body)
       echo "here"
       dec(p.withinLoop)
       return
