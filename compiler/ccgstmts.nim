@@ -9,6 +9,8 @@
 
 # included from cgen.nim
 
+import forloops
+
 const
   RangeExpandLimit = 256      # do not generate ranges
                               # over 'RangeExpandLimit' elements
@@ -436,6 +438,19 @@ proc genComputedGoto(p: BProc; n: PNode) =
     endBlock(p)
 
 proc genWhileStmt(p: BProc, t: PNode) =
+  if not p.prc.isNil:
+    let forLoop = extractForLoop(t, p.prc.getBody())
+    #echo "forLoop.counter: ", repr(forLoop.counter)
+    if forLoop.counter != nil:
+      inc(p.withinLoop)
+      #preserveBreakIdx:
+      #  lineF(p, cpsStmts, "for ($1 = $2; $1 <= $3; ++$1)",
+      #                      rangeA.rdLoc, rangeB.rdLoc,
+      #                      call.sons[3].getStr.toRope)
+      echo "here"
+      dec(p.withinLoop)
+      return
+
   # we don't generate labels here as for example GCC would produce
   # significantly worse code
   var

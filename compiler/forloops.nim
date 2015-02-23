@@ -18,8 +18,8 @@ const
     mLtCh, mLtB, mLtPtr}
 
 proc isCounter(s: PSym): bool {.inline.} =
-  s.kind in {skResult, skVar, skLet, skTemp} and 
-  {sfGlobal, sfAddrTaken} * s.flags == {}
+  s.kind in {skResult, skVar, skLet, skTemp} and
+    {sfGlobal, sfAddrTaken} * s.flags == {}
 
 proc isCall(n: PNode): bool {.inline.} =
   n.kind in nkCallKinds and n[0].kind == nkSym
@@ -28,11 +28,11 @@ proc fromSystem(op: PSym): bool = sfSystemModule in getModule(op).flags
 
 proc getCounter(lastStmt: PNode): PSym =
   if lastStmt.isCall:
-    let op = lastStmt.sym
+    let op = lastStmt[0].sym
     if op.magic in {mDec, mInc} or 
         ((op.name.s == "+=" or op.name.s == "-=") and op.fromSystem):
-      if op[1].kind == nkSym and isCounter(op[1].sym):
-        result = op[1].sym
+      if lastStmt[1].kind == nkSym and isCounter(lastStmt[1].sym):
+        result = lastStmt[1].sym
 
 proc counterInTree(n, loop: PNode; counter: PSym): bool =
   # prune the search tree: within the loop the counter may be used:
@@ -43,7 +43,7 @@ proc counterInTree(n, loop: PNode; counter: PSym): bool =
   of nkVarSection, nkLetSection:
     # definitions are fine!
     for it in n:
-      if counterInTree(it.lastSon): return true
+      if counterInTree(it.lastSon, loop, counter): return true
   else:
     for i in 0 .. <safeLen(n):
       if counterInTree(n[i], loop, counter): return true
@@ -63,23 +63,29 @@ type
 proc extractForLoop*(loop, fullTree: PNode): ForLoop =
   ## returns 'counter == nil' if the while loop 'n' is not a for loop:
   assert loop.kind == nkWhileStmt
-  let cond == loop[0]
+  let cond = loop[0]
 
   if not cond.isCall: return
+  echo "a"
   if cond[0].sym.magic notin someCmp: return
+  echo "b"
   
   var lastStmt = loop[1]
   while lastStmt.kind in {nkStmtList, nkStmtListExpr}:
     lastStmt = lastStmt.lastSon
+  echo lastStmt.kind
 
   let counter = getCounter(lastStmt)
-  if counter.isNil or counter.ast.isNil: return
+  if counter.isNil: return
+  echo "c"
 
   template `=~`(a, b): expr = a.kind == nkSym and a.sym == b
   
   if cond[1] =~ counter or cond[2] =~ counter:
+    echo "d"
     # ok, now check 'counter' is not used *after* the loop
     if counterInTree(fullTree, loop, counter): return
+    echo "e"
     # ok, success, fill in the fields:
     result.counter = counter
     result.init = counter.ast
