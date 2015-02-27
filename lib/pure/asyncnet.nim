@@ -69,7 +69,7 @@ type
   # TODO: I would prefer to just do:
   # AsyncSocket* {.borrow: `.`.} = distinct Socket. But that doesn't work.
   AsyncSocketDesc  = object
-    fd: SocketHandle
+    fd*: SocketHandle
     closed: bool ## determines whether this socket has been closed
     case isBuffered: bool ## determines whether this socket is buffered.
     of true:

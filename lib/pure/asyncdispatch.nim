@@ -1048,8 +1048,7 @@ else:
                           cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
       if client == osInvalidSocket:
         let lastError = osLastError()
-        assert lastError.int32 notin {EWOULDBLOCK, EAGAIN}
-        if lastError.int32 == EINTR:
+        if lastError.int32 in {EWOULDBLOCK, EAGAIN, EINTR}:
           return false
         else:
           if flags.isDisconnectionError(lastError):

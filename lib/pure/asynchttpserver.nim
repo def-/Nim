@@ -38,7 +38,7 @@ type
     body*: string
 
   AsyncHttpServer* = ref object
-    socket: AsyncSocket
+    socket*: AsyncSocket
     reuseAddr: bool
 
   HttpCode* = enum
@@ -254,6 +254,23 @@ proc serve*(server: AsyncHttpServer, port: Port,
   server.socket.bindAddr(port, address)
   server.socket.listen()
   
+  while true:
+    # TODO: Causes compiler crash.
+    #var (address, client) = await server.socket.acceptAddr()
+    var fut = await server.socket.acceptAddr()
+    asyncCheck processClient(fut.client, fut.address, callback)
+    #echo(f.isNil)
+    #echo(f.repr)
+
+proc initialize*(server: AsyncHttpServer, port: Port, address = "") =
+  server.socket = newAsyncSocket()
+  if server.reuseAddr:
+    server.socket.setSockOpt(OptReuseAddr, true)
+  server.socket.bindAddr(port, address)
+  server.socket.listen()
+
+proc serveParallel*(server: AsyncHttpServer,
+            callback: proc (request: Request): Future[void] {.closure,gcsafe.}) {.async.} =
   while true:
     # TODO: Causes compiler crash.
     #var (address, client) = await server.socket.acceptAddr()
