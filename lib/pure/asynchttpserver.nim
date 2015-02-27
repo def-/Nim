@@ -99,7 +99,7 @@ proc newAsyncHttpServer*(reuseAddr = true): AsyncHttpServer =
   new result
   result.reuseAddr = reuseAddr
 
-proc addHeaders(msg: var string, headers: StringTableRef) =
+proc addHeaders*(msg: var string, headers: StringTableRef) =
   for k, v in headers:
     msg.add(k & ": " & v & "\c\L")
 
@@ -109,8 +109,8 @@ proc sendHeaders*(req: Request, headers: StringTableRef): Future[void] =
   addHeaders(msg, headers)
   return req.client.send(msg)
 
-proc respond*(req: Request, code: HttpCode,
-        content: string, headers: StringTableRef = nil) {.async.} =
+template respond*(req: Request, code: HttpCode,
+        content: string, headers: StringTableRef = nil) =
   ## Responds to the request with the specified ``HttpCode``, headers and
   ## content.
   ##
@@ -118,10 +118,9 @@ proc respond*(req: Request, code: HttpCode,
   var msg = "HTTP/1.1 " & $code & "\c\L"
   if headers != nil:
     msg.addHeaders(headers)
-  msg.add("Content-Length: " & $content.len & "\c\L")
-  msg.add("\c\L")
+  msg.add("Content-Length: " & $content.len & "\c\L\c\L")
   msg.add(content)
-  await req.client.send(msg)
+  result = req.client.send(msg)
 
 proc newRequest(): Request =
   result.headers = newStringTable(modeCaseInsensitive)
@@ -179,11 +178,11 @@ proc processClient(client: AsyncSocket, address: string,
         try:
           request.protocol = parseProtocol(linePart)
         except ValueError:
-          asyncCheck request.respond(Http400, "Invalid request protocol. Got: " &
+          request.respond(Http400, "Invalid request protocol. Got: " &
               linePart)
           continue
       else:
-        await request.respond(Http400, "Invalid request. Got: " & line)
+        request.respond(Http400, "Invalid request. Got: " & line)
         continue
       inc i
 
@@ -213,19 +212,19 @@ proc processClient(client: AsyncSocket, address: string,
       if request.headers.hasKey("Content-Length"):
         var contentLength = 0
         if parseInt(request.headers["Content-Length"], contentLength) == 0:
-          await request.respond(Http400, "Bad Request. Invalid Content-Length.")
+          request.respond(Http400, "Bad Request. Invalid Content-Length.")
         else:
           request.body = await client.recv(contentLength)
           assert request.body.len == contentLength
       else:
-        await request.respond(Http400, "Bad Request. No Content-Length.")
+        request.respond(Http400, "Bad Request. No Content-Length.")
         continue
 
     case request.reqMethod
     of "get", "post", "head", "put", "delete", "trace", "options", "connect", "patch":
       await callback(request)
     else:
-      await request.respond(Http400, "Invalid request method. Got: " & request.reqMethod)
+      request.respond(Http400, "Invalid request method. Got: " & request.reqMethod)
 
     # Persistent connections
     if (request.protocol == HttpVer11 and
@@ -291,7 +290,7 @@ when isMainModule:
       #echo(req.headers)
       let headers = {"Date": "Tue, 29 Apr 2014 23:40:08 GMT",
           "Content-type": "text/plain; charset=utf-8"}
-      await req.respond(Http200, "Hello World", headers.newStringTable())
+      req.respond(Http200, "Hello World", headers.newStringTable())
 
     asyncCheck server.serve(Port(5555), cb)
     runForever()
