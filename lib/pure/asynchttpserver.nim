@@ -155,7 +155,7 @@ proc processClient(client: AsyncSocket, address: string,
     # Header: val
     # \n
     request.headers = newStringTable(modeCaseInsensitive)
-    request.hostname = address
+    request.hostname.shallowCopy(address)
     resetUri(request.url)
     assert client != nil
     request.client = client
@@ -166,13 +166,18 @@ proc processClient(client: AsyncSocket, address: string,
     if line == "":
       client.close()
       return
-    var reqMethod, path, protocol: string
     var i = 0
     for linePart in line.split(' '):
       case i
-      of 0: reqMethod = linePart
-      of 1: path = linePart
-      of 2: protocol = linePart
+      of 0: request.reqMethod.shallowCopy(linePart.normalize)
+      of 1: parseUri(linePart, request.url)
+      of 2:
+        try:
+          request.protocol = parseProtocol(linePart)
+        except ValueError:
+          asyncCheck request.respond(Http400, "Invalid request protocol. Got: " &
+              linePart)
+          continue
       else:
         await request.respond(Http400, "Invalid request. Got: " & line)
         continue
@@ -190,15 +195,6 @@ proc processClient(client: AsyncSocket, address: string,
       if line == "\c\L": break
       let (key, value) = parseHeader(line)
       request.headers[key] = value
-
-    request.reqMethod = reqMethod.normalize
-    parseUri(path, request.url)
-    try:
-      request.protocol = parseProtocol(protocol)
-    except ValueError:
-      asyncCheck request.respond(Http400, "Invalid request protocol. Got: " &
-          protocol)
-      continue
 
     if request.reqMethod == "post":
       # Check for Expect header
@@ -225,7 +221,7 @@ proc processClient(client: AsyncSocket, address: string,
     of "get", "post", "head", "put", "delete", "trace", "options", "connect", "patch":
       await callback(request)
     else:
-      await request.respond(Http400, "Invalid request method. Got: " & reqMethod)
+      await request.respond(Http400, "Invalid request method. Got: " & request.reqMethod)
 
     # Persistent connections
     if (request.protocol == HttpVer11 and
