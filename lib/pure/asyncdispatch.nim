@@ -949,6 +949,7 @@ else:
       retFuture.fail(newException(OSError, osErrorMsg(lastError)))
     return retFuture
 
+  # TODO: This for Windows
   proc readInto*(buf: cstring, size: int, socket: TAsyncFD,
              flags = {SocketFlag.SafeDisconn}): Future[int] =
     var retFuture = newFuture[int]("readInto")

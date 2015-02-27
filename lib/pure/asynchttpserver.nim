@@ -110,16 +110,18 @@ proc sendHeaders*(req: Request, headers: StringTableRef): Future[void] =
   return req.client.send(msg)
 
 proc respond*(req: Request, code: HttpCode,
-        content: string, headers = newStringTable()) {.async.} =
+        content: string, headers: StringTableRef = nil) {.async.} =
   ## Responds to the request with the specified ``HttpCode``, headers and
   ## content.
   ##
   ## This procedure will **not** close the client socket.
-  var customHeaders = headers
-  customHeaders["Content-Length"] = $content.len
   var msg = "HTTP/1.1 " & $code & "\c\L"
-  msg.addHeaders(customHeaders)
-  await req.client.send(msg & "\c\L" & content)
+  if headers != nil:
+    msg.addHeaders(headers)
+  msg.add("Content-Length: " & $content.len & "\c\L")
+  msg.add("\c\L")
+  msg.add(content)
+  await req.client.send(msg)
 
 proc newRequest(): Request =
   result.headers = newStringTable(modeCaseInsensitive)
@@ -149,12 +151,14 @@ proc processClient(client: AsyncSocket, address: string,
                       Future[void] {.closure, gcsafe.}) {.async.} =
   var request: Request
   request.url = initUri()
+  request.headers = newStringTable(modeCaseInsensitive)
   var line = newStringOfCap(80)
+  var key, value = ""
   while not client.isClosed:
     # GET /path HTTP/1.1
     # Header: val
     # \n
-    request.headers = newStringTable(modeCaseInsensitive)
+    request.headers.resetStringTable(modeCaseInsensitive)
     request.hostname.shallowCopy(address)
     resetUri(request.url)
     assert client != nil
