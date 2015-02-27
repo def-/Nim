@@ -75,7 +75,7 @@ type
     of true:
       buffer: array[0..BufferSize, char]
       currPos: int # current index in buffer
-      bufLen: int # current length of buffer
+      bufLen*: int # current length of buffer
     of false: nil
     case isSsl: bool
     of true:
@@ -197,7 +197,7 @@ template readInto*(buf: cstring, size: int, socket: AsyncSocket,
   # Not in SSL mode.
   readIntoFut.read()
 
-template readIntoBuf(socket: AsyncSocket,
+template readIntoBuf*(socket: AsyncSocket,
     flags: set[SocketFlag]): int =
   var readIntoFut = readInto(addr socket.buffer[0], BufferSize, socket, flags)
   socket.currPos = 0
@@ -304,6 +304,61 @@ proc accept*(socket: AsyncSocket,
         retFut.complete(future.read.client)
   return retFut
 
+template recvLineInto*(socket: AsyncSocket, resString: var string,
+    flags = {SocketFlag.SafeDisconn}) =
+  ## Reads a line of data from ``socket``. Returned future will complete once
+  ## a full line is read or an error occurs.
+  ##
+  ## If a full line is read ``\r\L`` is not
+  ## added to ``line``, however if solely ``\r\L`` is read then ``line``
+  ## will be set to it.
+  ## 
+  ## If the socket is disconnected, ``line`` will be set to ``""``.
+  ##
+  ## If the socket is disconnected in the middle of a line (before ``\r\L``
+  ## is read) then line will be set to ``""``.
+  ## The partial line **will be lost**.
+  ##
+  ## **Warning**: The ``Peek`` flag is not yet implemented.
+  ## 
+  ## **Warning**: ``recvLine`` on unbuffered sockets assumes that the protocol
+  ## uses ``\r\L`` to delimit a new line.
+  assert SocketFlag.Peek notin flags ## TODO:
+
+  template addNLIfEmpty(): stmt =
+    if resString.len == 0:
+      resString.add("\c\L")
+
+  block recvLineInto:
+    if socket.bufLen == 0:
+      let resFut = socket.readIntoBuf(flags)
+      if resFut == 0:
+        break recvLineInto
+
+    var lastR = false
+    while true:
+      if socket.currPos >= socket.bufLen:
+        let resFut = socket.readIntoBuf(flags)
+        if resFut == 0:
+          resString.setLen(0)
+          break recvLineInto
+
+      case socket.buffer[socket.currPos]
+      of '\r':
+        lastR = true
+        addNLIfEmpty()
+      of '\L':
+        addNLIfEmpty()
+        socket.currPos.inc()
+        break recvLineInto
+      else:
+        if lastR:
+          socket.currPos.inc()
+          break recvLineInto
+        else:
+          resString.add socket.buffer[socket.currPos]
+      socket.currPos.inc()
+
 proc recvLine*(socket: AsyncSocket,
     flags = {SocketFlag.SafeDisconn}): Future[string] {.async.} =
   ## Reads a line of data from ``socket``. Returned future will complete once
@@ -328,7 +383,7 @@ proc recvLine*(socket: AsyncSocket,
       result.add("\c\L")
   assert SocketFlag.Peek notin flags ## TODO:
   if socket.isBuffered:
-    result = newStringOfCap(80)
+    result = ""
     shallow(result)
     if socket.bufLen == 0:
       let res = socket.readIntoBuf(flags)

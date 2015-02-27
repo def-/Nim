@@ -149,18 +149,20 @@ proc processClient(client: AsyncSocket, address: string,
                       Future[void] {.closure, gcsafe.}) {.async.} =
   var request: Request
   request.url = initUri()
+  var line = newStringOfCap(80)
   while not client.isClosed:
     # GET /path HTTP/1.1
     # Header: val
     # \n
     request.headers = newStringTable(modeCaseInsensitive)
-    request.hostname.shallowCopy(address)
+    request.hostname = address
     resetUri(request.url)
     assert client != nil
     request.client = client
 
     # First line - GET /path HTTP/1.1
-    let line = await client.recvLine() # TODO: Timeouts.
+    line.setLen(0)
+    client.recvLineInto(line) # TODO: Timeouts.
     if line == "":
       client.close()
       return
@@ -180,11 +182,13 @@ proc processClient(client: AsyncSocket, address: string,
     i = 0
     while true:
       i = 0
-      let headerLine = await client.recvLine()
-      if headerLine == "":
+      line.setLen(0)
+      client.recvLineInto(line)
+
+      if line == "":
         client.close(); return
-      if headerLine == "\c\L": break
-      let (key, value) = parseHeader(headerLine)
+      if line == "\c\L": break
+      let (key, value) = parseHeader(line)
       request.headers[key] = value
 
     request.reqMethod = reqMethod.normalize
