@@ -166,8 +166,8 @@ elif defined(linux):
       if (s.events[i].events and EPOLLIN) != 0: evSet = evSet + {EvRead}
       if (s.events[i].events and EPOLLOUT) != 0: evSet = evSet + {EvWrite}
       let selectorKey = s.fds[fd]
-      assert selectorKey != nil
-      result.add((selectorKey, evSet))
+      if selectorKey != nil:
+        result.add((selectorKey, evSet))
 
       #echo("Epoll: ", result[i].key.fd, " ", result[i].events, " ", result[i].key.events)
   

@@ -54,9 +54,9 @@ proc parseAuthority(authority: string, result: var Uri) =
     case authority[i]
     of '@':
       result.password = result.port
-      result.port = ""
+      result.port.setLen(0)
       result.username = result.hostname
-      result.hostname = ""
+      result.hostname.setLen(0)
       inPort = false
     of ':':
       inPort = true
@@ -75,7 +75,7 @@ proc parsePath(uri: string, i: var int, result: var Uri) =
   # The 'mailto' scheme's PATH actually contains the hostname/username
   if result.scheme.toLower == "mailto":
     parseAuthority(result.path, result)
-    result.path = ""
+    result.path.setLen(0)
 
   if uri[i] == '?':
     i.inc # Skip '?'
@@ -85,14 +85,22 @@ proc parsePath(uri: string, i: var int, result: var Uri) =
     i.inc # Skip '#'
     i.inc parseUntil(uri, result.anchor, {}, i)
 
-proc initUri(): Uri =
+proc initUri*(): Uri =
   result = Uri(scheme: "", username: "", password: "", hostname: "", port: "",
                 path: "", query: "", anchor: "")
 
-proc parseUri*(uri: string): Uri =
-  ## Parses a URI.
-  result = initUri()
+proc resetUri*(uri: var Uri) =
+  uri.scheme.setLen(0)
+  uri.username.setLen(0)
+  uri.password.setLen(0)
+  uri.hostname.setLen(0)
+  uri.port.setLen(0)
+  uri.path.setLen(0)
+  uri.query.setLen(0)
+  uri.anchor.setLen(0)
 
+proc parseUri*(uri: string, result: var Uri) =
+  ## Parses a URI.
   var i = 0
 
   # Check if this is a reference URI (relative URI)
@@ -105,7 +113,7 @@ proc parseUri*(uri: string): Uri =
   if uri[i] != ':':
     # Assume this is a reference URI (relative URI)
     i = 0
-    result.scheme = ""
+    result.scheme.setLen(0)
     parsePath(uri, i, result)
     return
   i.inc # Skip ':'
@@ -123,6 +131,11 @@ proc parseUri*(uri: string): Uri =
 
   # Path
   parsePath(uri, i, result)
+
+proc parseUri*(uri: string): Uri =
+  ## Parses a URI.
+  result = initUri()
+  parseUri(uri, result)
 
 proc removeDotSegments(path: string): string =
   var collection: seq[string] = @[]

@@ -949,6 +949,29 @@ else:
       retFuture.fail(newException(OSError, osErrorMsg(lastError)))
     return retFuture
 
+  proc readInto*(buf: cstring, size: int, socket: TAsyncFD,
+             flags = {SocketFlag.SafeDisconn}): Future[int] =
+    var retFuture = newFuture[int]("readInto")
+
+    proc cb(sock: TAsyncFD): bool =
+      result = true
+      let res = recv(sock.SocketHandle, buf, size.cint,
+                     flags.toOSFlags())
+      #echo("recv cb res: ", res)
+      if res < 0:
+        let lastError = osLastError()
+        if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}:
+          if flags.isDisconnectionError(lastError):
+            retFuture.complete(0)
+          else:
+            retFuture.fail(newException(OSError, osErrorMsg(lastError)))
+        else:
+          result = false # We still want this callback to be called.
+      else:
+        retFuture.complete(res)
+    addRead(socket, cb)
+    return retFuture
+
   proc recv*(socket: TAsyncFD, size: int,
              flags = {SocketFlag.SafeDisconn}): Future[string] =
     var retFuture = newFuture[string]("recv")

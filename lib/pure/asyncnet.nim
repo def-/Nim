@@ -182,26 +182,27 @@ proc connect*(socket: AsyncSocket, address: string, port: Port,
       sslSetConnectState(socket.sslHandle)
       sslLoop(socket, flags, sslDoHandshake(socket.sslHandle))
 
-proc readInto(buf: cstring, size: int, socket: AsyncSocket,
-              flags: set[SocketFlag]): Future[int] {.async.} =
-  if socket.isSsl:
-    when defined(ssl):
-      # SSL mode.
-      sslLoop(socket, flags,
-        sslRead(socket.sslHandle, buf, size.cint))
-      result = opResult
-  else:
-    var data = await recv(socket.fd.TAsyncFD, size, flags)
-    if data.len != 0:
-      copyMem(buf, addr data[0], data.len)
-    # Not in SSL mode.
-    result = data.len
+template readInto*(buf: cstring, size: int, socket: AsyncSocket,
+              flags: set[SocketFlag]): int =
+  # TODO: Fix for SSL
+  #if socket.isSsl:
+  #  when defined(ssl):
+  #    # SSL mode.
+  #    sslLoop(socket, flags,
+  #      sslRead(socket.sslHandle, buf, size.cint))
+  #    result = opResult
+  #else:
+  var readIntoFut = readInto(buf, size, socket.fd.TAsyncFD, flags)
+  yield readIntoFut
+  # Not in SSL mode.
+  readIntoFut.read()
 
-proc readIntoBuf(socket: AsyncSocket,
-    flags: set[SocketFlag]): Future[int] {.async.} =
-  result = await readInto(addr socket.buffer[0], BufferSize, socket, flags)
+template readIntoBuf(socket: AsyncSocket,
+    flags: set[SocketFlag]): int =
+  var readIntoFut = readInto(addr socket.buffer[0], BufferSize, socket, flags)
   socket.currPos = 0
-  socket.bufLen = result
+  socket.bufLen = readIntoFut
+  readIntoFut
 
 proc recv*(socket: AsyncSocket, size: int,
            flags = {SocketFlag.SafeDisconn}): Future[string] {.async.} =
@@ -222,10 +223,11 @@ proc recv*(socket: AsyncSocket, size: int,
   ## to be read then the future will complete with a value of ``""``.
   if socket.isBuffered:
     result = newString(size)
+    shallow(result)
     let originalBufPos = socket.currPos
 
     if socket.bufLen == 0:
-      let res = await socket.readIntoBuf(flags - {SocketFlag.Peek})
+      let res = socket.readIntoBuf(flags - {SocketFlag.Peek})
       if res == 0:
         result.setLen(0)
         return
@@ -236,7 +238,7 @@ proc recv*(socket: AsyncSocket, size: int,
         if SocketFlag.Peek in flags:
           # We don't want to get another buffer if we're peeking.
           break
-        let res = await socket.readIntoBuf(flags - {SocketFlag.Peek})
+        let res = socket.readIntoBuf(flags - {SocketFlag.Peek})
         if res == 0:
           break
 
@@ -251,7 +253,7 @@ proc recv*(socket: AsyncSocket, size: int,
     result.setLen(read)
   else:
     result = newString(size)
-    let read = await readInto(addr result[0], size, socket, flags)
+    let read = readInto(addr result[0], size, socket, flags)
     result.setLen(read)
 
 proc send*(socket: AsyncSocket, data: string,
@@ -326,18 +328,19 @@ proc recvLine*(socket: AsyncSocket,
       result.add("\c\L")
   assert SocketFlag.Peek notin flags ## TODO:
   if socket.isBuffered:
-    result = ""
+    result = newStringOfCap(80)
+    shallow(result)
     if socket.bufLen == 0:
-      let res = await socket.readIntoBuf(flags)
+      let res = socket.readIntoBuf(flags)
       if res == 0:
         return
 
     var lastR = false
     while true:
       if socket.currPos >= socket.bufLen:
-        let res = await socket.readIntoBuf(flags)
+        let res = socket.readIntoBuf(flags)
         if res == 0:
-          result = ""
+          result.setLen(0)
           break
 
       case socket.buffer[socket.currPos]
@@ -370,7 +373,7 @@ proc recvLine*(socket: AsyncSocket,
       elif c == "\L":
         addNLIfEmpty()
         return
-      add(result.string, c)
+      add(result, c)
 
 proc listen*(socket: AsyncSocket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
   ## Marks ``socket`` as accepting connections.

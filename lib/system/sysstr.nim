@@ -45,7 +45,9 @@ proc rawNewString(space: int): NimString {.compilerProc.} =
   result = allocStr(sizeof(TGenericSeq) + s + 1)
   result.reserved = s
 
+#var counter = 0
 proc mnewString(len: int): NimString {.compilerProc.} =
+  #inc counter
   result = rawNewString(len)
   result.len = len
 
@@ -72,7 +74,11 @@ proc toNimStr(str: cstring, len: int): NimString {.compilerProc.} =
 proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
   result = toNimStr(str, c_strlen(str))
 
+#var counter = 0
 proc copyString(src: NimString): NimString {.compilerRtl.} =
+  #writeStackTrace()
+  #inc counter
+  #echo counter
   if src != nil:
     if (src.reserved and seqShallowFlag) != 0:
       result = src

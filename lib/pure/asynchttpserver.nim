@@ -123,8 +123,6 @@ proc respond*(req: Request, code: HttpCode,
 
 proc newRequest(): Request =
   result.headers = newStringTable(modeCaseInsensitive)
-  result.hostname = ""
-  result.body = ""
 
 proc parseHeader(line: string): tuple[key, value: string] =
   var i = 0
@@ -149,12 +147,15 @@ proc sendStatus(client: AsyncSocket, status: string): Future[void] =
 proc processClient(client: AsyncSocket, address: string,
                    callback: proc (request: Request):
                       Future[void] {.closure, gcsafe.}) {.async.} =
+  var request: Request
+  request.url = initUri()
   while not client.isClosed:
     # GET /path HTTP/1.1
     # Header: val
     # \n
-    var request = newRequest()
-    request.hostname = address
+    request.headers = newStringTable(modeCaseInsensitive)
+    request.hostname.shallowCopy(address)
+    resetUri(request.url)
     assert client != nil
     request.client = client
 
@@ -163,45 +164,46 @@ proc processClient(client: AsyncSocket, address: string,
     if line == "":
       client.close()
       return
-    let lineParts = line.split(' ')
-    if lineParts.len != 3:
-      await request.respond(Http400, "Invalid request. Got: " & line)
-      continue
-
-    let reqMethod = lineParts[0]
-    let path = lineParts[1]
-    let protocol = lineParts[2]
+    var reqMethod, path, protocol: string
+    var i = 0
+    for linePart in line.split(' '):
+      case i
+      of 0: reqMethod = linePart
+      of 1: path = linePart
+      of 2: protocol = linePart
+      else:
+        await request.respond(Http400, "Invalid request. Got: " & line)
+        continue
+      inc i
 
     # Headers
-    var i = 0
+    i = 0
     while true:
       i = 0
       let headerLine = await client.recvLine()
       if headerLine == "":
         client.close(); return
       if headerLine == "\c\L": break
-      # TODO: Compiler crash
-      #let (key, value) = parseHeader(headerLine)
-      let kv = parseHeader(headerLine)
-      request.headers[kv.key] = kv.value
+      let (key, value) = parseHeader(headerLine)
+      request.headers[key] = value
 
-    request.reqMethod = reqMethod
-    request.url = parseUri(path)
+    request.reqMethod = reqMethod.normalize
+    parseUri(path, request.url)
     try:
-      request.protocol = protocol.parseProtocol()
+      request.protocol = parseProtocol(protocol)
     except ValueError:
       asyncCheck request.respond(Http400, "Invalid request protocol. Got: " &
           protocol)
       continue
 
-    if reqMethod.normalize == "post":
+    if request.reqMethod == "post":
       # Check for Expect header
       if request.headers.hasKey("Expect"):
         if request.headers["Expect"].toLower == "100-continue":
           await client.sendStatus("100 Continue")
         else:
           await client.sendStatus("417 Expectation Failed")
-    
+
       # Read the body
       # - Check for Content-length header
       if request.headers.hasKey("Content-Length"):
@@ -215,7 +217,7 @@ proc processClient(client: AsyncSocket, address: string,
         await request.respond(Http400, "Bad Request. No Content-Length.")
         continue
 
-    case reqMethod.normalize
+    case request.reqMethod
     of "get", "post", "head", "put", "delete", "trace", "options", "connect", "patch":
       await callback(request)
     else:
