@@ -187,7 +187,6 @@ proc processClient(client: AsyncSocket, address: string,
       inc i
 
     # Headers
-    i = 0
     while true:
       i = 0
       line.setLen(0)
