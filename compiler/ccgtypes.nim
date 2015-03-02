@@ -302,8 +302,23 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet): PRope =
   var etB = t.skipTypes(abstractInst)
   echo "KIND: ", etB.kind
   case etB.kind
-  of tyObject, tyTuple, tyVarargs, tyOpenArray:
-    if isImportedCppType(etB) and t.kind == tyGenericInst:
+  of tyObject, tyTuple:
+    if t.sym != nil: echo "t: ", t.sym.flags
+    if etB.sym != nil: echo "etB: ", etB.sym.flags
+    if (isImportedCppType(etB) or isImportedType(etB)) and t.kind == tyGenericInst:
+      result = getTypeDescAux(m, t, check)
+    else:
+      let x = getUniqueType(etB)
+      result = getTypeForward(m, x)
+      pushType(m, x)
+  of tyOpenArray, tyVarargs:
+    #result = con(getTypeDescAux(m, t.sons[0], check), "*")
+    #idTablePut(m.typeCache, t, result)
+    echo etB.flags
+    if t.sym != nil: echo "t: ", t.sym.flags
+    if etB.sym != nil: echo "etB: ", etB.sym.flags
+    if isImportedType(t) or isImportedCppType(t):
+      echo "MOM I'M IMPORTED"
       result = getTypeDescAux(m, t, check)
     else:
       let x = getUniqueType(etB)
@@ -332,7 +347,8 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
     if params != nil: app(params, ~", ")
     fillLoc(param.loc, locParam, param.typ, mangleName(param),
             param.paramStorageLoc)
-    if ccgIntroducedPtr(param) or param.typ.kind in {tyOpenArray, tyVarargs}:
+    if ccgIntroducedPtr(param) or param.typ.kind in {tyVarargs, tyOpenArray}:
+      echo "TO THE CANNONS"
       app(params, getTypeDescWeak(m, param.typ, check))
       app(params, ~"*")
       incl(param.loc.flags, lfIndirect)
