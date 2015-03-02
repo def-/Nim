@@ -287,7 +287,7 @@ proc getTypeForward(m: BModule, typ: PType): PRope =
   result = getTypePre(m, typ)
   if result != nil: return 
   case typ.kind
-  of tySequence, tyTuple, tyObject: 
+  of tySequence, tyObject, tyTuple, tyVarargs, tyOpenArray:
     result = getTypeName(typ)
     if not isImportedType(typ): 
       appf(m.s[cfsForwardTypes], getForwardStructFormat(m),
@@ -300,8 +300,9 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet): PRope =
   ## we know we only need a pointer to it so we only generate a struct forward
   ## declaration:
   var etB = t.skipTypes(abstractInst)
+  echo "KIND: ", etB.kind
   case etB.kind
-  of tyObject, tyTuple:
+  of tyObject, tyTuple, tyVarargs, tyOpenArray:
     if isImportedCppType(etB) and t.kind == tyGenericInst:
       result = getTypeDescAux(m, t, check)
     else:
@@ -331,7 +332,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
     if params != nil: app(params, ~", ")
     fillLoc(param.loc, locParam, param.typ, mangleName(param),
             param.paramStorageLoc)
-    if ccgIntroducedPtr(param): 
+    if ccgIntroducedPtr(param) or param.typ.kind in {tyOpenArray, tyVarargs}:
       app(params, getTypeDescWeak(m, param.typ, check))
       app(params, ~"*")
       incl(param.loc.flags, lfIndirect)
