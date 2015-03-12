@@ -1809,12 +1809,17 @@ proc parseVarTuple(p: var TParser): PNode =
   result = newNodeP(nkVarTuple, p)
   getTok(p)                   # skip '('
   optInd(p, result)
-  while p.tok.tokType in {tkSymbol, tkAccent}: 
-    var a = identWithPragma(p)
-    addSon(result, a)
-    if p.tok.tokType != tkComma: break 
-    getTok(p)
-    skipComment(p, a)
+  while p.tok.tokType in {tkSymbol, tkAccent, tkUnderscore}: 
+    if p.tok.tokType == tkUnderscore:
+      addSon(result, newNodeP(nkUnusedVar, p))
+      getTok(p)
+      getTok(p)
+    else:
+      var a = identWithPragma(p)
+      addSon(result, a)
+      if p.tok.tokType != tkComma: break 
+      getTok(p)
+      skipComment(p, a)
   addSon(result, ast.emptyNode)         # no type desc
   optPar(p)
   eat(p, tkParRi)

@@ -62,6 +62,7 @@ type
     tkColon, tkColonColon, tkEquals, tkDot, tkDotDot,
     tkOpr, tkComment, tkAccent,
     tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr,
+    tkUnderscore,
     
   TTokTypes* = set[TTokType]
 
@@ -96,7 +97,8 @@ const
     ":", "::", "=", ".", "..",
     "tkOpr", "tkComment", "`",
     "tkSpaces", "tkInfixOpr",
-    "tkPrefixOpr", "tkPostfixOpr"]
+    "tkPrefixOpr", "tkPostfixOpr",
+    "tkUnderscore"]
 
 type 
   TNumericalBase* = enum 
@@ -230,6 +232,7 @@ proc dispMessage(L: TLexer; info: TLineInfo; msg: TMsgKind; arg: string) =
     L.errorHandler(info, msg, arg)
 
 proc lexMessage(L: TLexer, msg: TMsgKind, arg = "") =
+  writeStackTrace()
   L.dispMessage(getLineInfo(L), msg, arg)
 
 proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") =
@@ -888,6 +891,9 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
       tok.tokType = tkCharLit
     of '0'..'9':
       tok = getNumber(L)
+    of '_':
+      tok.tokType = tkUnderscore
+      inc(L.bufpos)
     else:
       if c in OpChars: 
         getOperator(L, tok)

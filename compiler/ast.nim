@@ -221,6 +221,7 @@ type
     nkGotoState,          # used for the state machine (for iterators)
     nkState,              # give a label to a code section (for iterators)
     nkBreakState,         # special break statement for easier code generation
+    nkUnusedVar,          # a variable that won't be used
   TNodeKinds* = set[TNodeKind]
 
 type
