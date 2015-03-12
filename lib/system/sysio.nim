@@ -200,14 +200,14 @@ when defined(windows) and not defined(useWinAnsi):
     var m = newWideCString(mode)
     result = wfopen(f, m)
 
-  proc freopen(filename, mode: cstring, stream: File): File =
+  proc freopen(filename, mode: cstring, stream: CFile): CFile =
     var f = newWideCString(filename)
     var m = newWideCString(mode)
     result = wfreopen(f, m, stream)
 
 else:
   proc fopen(filename, mode: cstring): pointer {.importc: "fopen", noDecl.}
-  proc freopen(filename, mode: cstring, stream: File): File {.
+  proc freopen(filename, mode: cstring, stream: CFile): CFile {.
     importc: "freopen", nodecl.}
 
 const
@@ -230,7 +230,7 @@ proc open(f: var File, filename: string,
       discard setvbuf(f, nil, IONBF, 0)
 
 proc reopen(f: File, filename: string, mode: FileMode = fmRead): bool = 
-  var p: pointer = freopen(filename, FormatOpen[mode], f)
+  var p: pointer = freopen(filename, FormatOpen[mode], f.file)
   result = p != nil
 
 proc fdopen(filehandle: FileHandle, mode: cstring): File {.

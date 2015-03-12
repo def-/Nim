@@ -2345,10 +2345,16 @@ when not defined(JS): #and not defined(NimrodVM):
 
   # ----------------- IO Part ------------------------------------------------
   when hostOS != "standalone":
+    const fileBufferSize = 8192
     type
-      CFile {.importc: "FILE", header: "<stdio.h>",
-              final, incompletestruct.} = object
-      File* = ptr CFile ## The type representing a file handle.
+      CFileObj {.importc: "FILE", header: "<stdio.h>",
+                 final, incompletestruct.} = object
+      CFile* = ptr CFileObj
+      File* = ref object ## The type representing a file handle.
+        file*: CFile
+        buffer: array[fileBufferSize, char]
+        curPos: int ## current index in buffer
+        bufLen: int ## current length of buffer
 
       FileMode* = enum           ## The file mode when opening a file.
         fmRead,                   ## Open the file for read access only.
@@ -2369,11 +2375,15 @@ when not defined(JS): #and not defined(NimrodVM):
 
     # text file handling:
     var
-      stdin* {.importc: "stdin", header: "<stdio.h>".}: File
+      cfileStdin {.importc: "stdin", header: "<stdio.h>".}: CFile
+      cfileStdout {.importc: "stdout", header: "<stdio.h>".}: CFile
+      cfileStderr {.importc: "stderr", header: "<stdio.h>".}: CFile
+
+      stdin* = File(file: cfileStdin)
         ## The standard input stream.
-      stdout* {.importc: "stdout", header: "<stdio.h>".}: File
+      stdout* = File(file: cfileStdout)
         ## The standard output stream.
-      stderr* {.importc: "stderr", header: "<stdio.h>".}: File
+      stderr* = File(file: cfileStderr)
         ## The standard error stream.
 
     when defined(useStdoutAsStdmsg):
@@ -2403,6 +2413,7 @@ when not defined(JS): #and not defined(NimrodVM):
       ##
       ## Default mode is readonly. Raises an ``IO`` exception if the file
       ## could not be opened.
+      new result
       if not open(result, filename, mode, bufSize):
         sysFatal(IOError, "cannot open: ", filename)
 
