@@ -975,6 +975,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if sfNoForward in c.module.flags and
        sfSystemModule notin c.module.flags:
       addInterfaceOverloadableSymAt(c, c.currentScope, s)
+      echo "1"
       s.flags.incl sfForward
       return
   else:
@@ -1015,6 +1016,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     s.typ.flags.incl(tfIterator)
 
   var proto = searchForProc(c, s.scope, s)
+  echo "PROTO: ", isNil(proto)
   if proto == nil:
     if s.kind == skClosureIterator: s.typ.callConv = ccClosure
     else: s.typ.callConv = lastOptionEntry(c).defaultCC
@@ -1035,7 +1037,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       localError(n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProc)
     if sfForward notin proto.flags:
       wrongRedefinition(n.info, proto.name.s)
-    excl(proto.flags, sfForward)
+    echo "2"
+    writeStackTrace()
+    #excl(proto.flags, sfForward)
     closeScope(c)         # close scope with wrong parameter symbols
     openScope(c)          # open scope for old (correct) parameter symbols
     if proto.ast.sons[genericParamsPos].kind != nkEmpty:
@@ -1089,6 +1093,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   else:
     if proto != nil: localError(n.info, errImplOfXexpected, proto.name.s)
     if {sfImportc, sfBorrow} * s.flags == {} and s.magic == mNone:
+      echo "3"
       incl(s.flags, sfForward)
     elif sfBorrow in s.flags: semBorrow(c, n, s)
   sideEffectsCheck(c, s)

@@ -193,6 +193,7 @@ proc processModule(module: PSym, stream: PLLStream, rd: PRodReader) =
 
       while true:
         var n = parseTopLevelStmt(p)
+        echo n.kind
         if n.kind == nkEmpty: break
         if not processTopLevelStmt(n, a): break
 

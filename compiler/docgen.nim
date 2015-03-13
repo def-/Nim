@@ -208,13 +208,16 @@ proc isVisible(n: PNode): bool =
     if n.len == 2 and n.sons[0].kind == nkIdent:
       var v = n.sons[0].ident
       result = v.id == ord(wStar) or v.id == ord(wMinus)
+      echo "a: ", result
   elif n.kind == nkSym:
     # we cannot generate code for forwarded symbols here as we have no
     # exception tracking information here. Instead we copy over the comment
     # from the proc header.
     result = {sfExported, sfFromGeneric, sfForward}*n.sym.flags == {sfExported}
+    echo "b: ", n.sym.flags
   elif n.kind == nkPragmaExpr:
     result = isVisible(n.sons[0])
+    echo "c: ", result
 
 proc getName(d: PDoc, n: PNode, splitAfter = -1): string =
   case n.kind
@@ -328,7 +331,9 @@ proc docstringSummary(rstText: string): string =
 
 
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
-  if not isVisible(nameNode): return
+  if not isVisible(nameNode):
+    echo "INVISIBLE"
+    return
   let
     name = getName(d, nameNode)
     nameRope = name.toRope
@@ -463,6 +468,7 @@ proc generateDoc*(d: PDoc, n: PNode) =
   of nkCommentStmt: app(d.modDesc, genComment(d, n))
   of nkProcDef:
     when useEffectSystem: documentRaises(n)
+    writeStackTrace()
     genItem(d, n, n.sons[namePos], skProc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(n)
