@@ -629,7 +629,7 @@ proc skipGenericInvocation(t: PType): PType {.inline.} =
   result = t
   if result.kind == tyGenericInvocation:
     result = result.sons[0]
-  while result.kind in {tyGenericInst, tyGenericBody}:
+  while result.kind in {tyGenericInst, tyGenericBody, tyRef, tyPtr}:
     result = lastSon(result)
 
 proc addInheritedFields(c: PContext, check: var IntSet, pos: var int,
@@ -651,7 +651,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
     if base.isNil:
       localError(n.info, errIllegalRecursionInTypeX, "object")
     else:
-      var concreteBase = skipGenericInvocation(base).skipTypes(skipPtrs)
+      var concreteBase = skipGenericInvocation(base)
       if concreteBase.kind == tyObject and tfFinal notin concreteBase.flags:
         addInheritedFields(c, check, pos, concreteBase)
       else:
@@ -1085,6 +1085,7 @@ proc semTypeExpr(c: PContext, n: PNode): PType =
     result = n.typ.base
   else:
     localError(n.info, errTypeExpected, n.renderTree)
+    result = errorType(c)
 
 proc freshType(res, prev: PType): PType {.inline.} =
   if prev.isNil:
@@ -1326,8 +1327,12 @@ proc processMagicType(c: PContext, m: PSym) =
     rawAddSon(m.typ, newTypeS(tyEmpty, c))
   of mIntSetBaseType: setMagicType(m, tyRange, intSize)
   of mNil: setMagicType(m, tyNil, ptrSize)
-  of mExpr: setMagicType(m, tyExpr, 0)
-  of mStmt: setMagicType(m, tyStmt, 0)
+  of mExpr:
+    setMagicType(m, tyExpr, 0)
+    if m.name.s == "expr": m.typ.flags.incl tfOldSchoolExprStmt
+  of mStmt:
+    setMagicType(m, tyStmt, 0)
+    if m.name.s == "stmt": m.typ.flags.incl tfOldSchoolExprStmt
   of mTypeDesc:
     setMagicType(m, tyTypeDesc, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))

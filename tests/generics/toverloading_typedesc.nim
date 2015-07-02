@@ -1,7 +1,7 @@
 discard """
   exitcode: 0
 """
-import mgenericprocmatcher
+import moverloading_typedesc
 import tables
 
 type

@@ -731,8 +731,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         result = isNone
     else: discard
   of tyOpenArray, tyVarargs:
-    # varargs[expr] is special
-    if f.kind == tyVarargs and f.sons[0].kind == tyExpr: return
+    # varargs[expr] is special too but handled earlier. So we only need to
+    # handle varargs[stmt] which is the same as varargs[typed]:
+    if f.kind == tyVarargs:
+      if tfOldSchoolExprStmt in f.sons[0].flags:
+        if f.sons[0].kind == tyExpr: return
+      elif f.sons[0].kind == tyStmt: return
     case a.kind
     of tyOpenArray, tyVarargs:
       result = typeRel(c, base(f), base(a))
@@ -756,7 +760,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       if f.kind == tyOpenArray:
         if f.sons[0].kind == tyChar:
           result = isConvertible
-        elif f.sons[0].kind == tyGenericParam and typeRel(c, base(f), base(a)) >= isGeneric:
+        elif f.sons[0].kind == tyGenericParam and a.len > 0 and
+            typeRel(c, base(f), base(a)) >= isGeneric:
           result = isConvertible
     else: discard
   of tySequence:
@@ -1101,6 +1106,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       result = isNone
 
   of tyStmt:
+    if aOrig != nil and tfOldSchoolExprStmt notin f.flags:
+      put(c.bindings, f, aOrig)
     result = isGeneric
 
   of tyProxy:
@@ -1469,6 +1476,10 @@ proc incrIndexType(t: PType) =
   assert t.kind == tyArrayConstr
   inc t.sons[0].n.sons[1].intVal
 
+template isVarargsUntyped(x): expr =
+  x.kind == tyVarargs and x.sons[0].kind == tyExpr and
+    tfOldSchoolExprStmt notin x.sons[0].flags
+
 proc matchesAux(c: PContext, n, nOrig: PNode,
                 m: var TCandidate, marker: var IntSet) =
   template checkConstraint(n: expr) {.immediate, dirty.} =
@@ -1497,10 +1508,17 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
   var formalLen = m.callee.n.len
   addSon(m.call, copyTree(n.sons[0]))
   var container: PNode = nil # constructed container
-  var formal: PSym = nil
+  var formal: PSym = if formalLen > 1: m.callee.n.sons[1].sym else: nil
 
   while a < n.len:
-    if n.sons[a].kind == nkExprEqExpr:
+    if a >= formalLen-1 and formal != nil and formal.typ.isVarargsUntyped:
+      if container.isNil:
+        container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, n.info))
+        setSon(m.call, formal.position + 1, container)
+      else:
+        incrIndexType(container.typ)
+      addSon(container, n.sons[a])
+    elif n.sons[a].kind == nkExprEqExpr:
       # named param
       # check if m.callee has such a param:
       prepareNamedParam(n.sons[a])
@@ -1522,7 +1540,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       n.sons[a].sons[1] = prepareOperand(c, formal.typ, n.sons[a].sons[1])
       n.sons[a].typ = n.sons[a].sons[1].typ
       var arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
-                                n.sons[a].sons[1], nOrig.sons[a].sons[1])
+                                n.sons[a].sons[1], n.sons[a].sons[1])
       if arg == nil:
         m.state = csNoMatch
         return
@@ -1551,7 +1569,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
             addSon(m.call, copyTree(n.sons[a]))
         elif formal != nil and formal.typ.kind == tyVarargs:
           # beware of the side-effects in 'prepareOperand'! So only do it for
-          # varags matching. See tests/metatype/tstatic_overloading.
+          # varargs matching. See tests/metatype/tstatic_overloading.
           m.baseTypeMatch = false
           n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
           var arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
